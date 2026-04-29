@@ -1,0 +1,179 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sky-top: #87CEEB;
+  --sky-bottom: #B8E4F9;
+  --cloud: #FFFFFF;
+  --grass: #7BC67E;
+  --path: #D4A96A;
+  --accent: #FF6B9D;
+  --gold: #FFD700;
+  --soft: #FFF0F5;
+  --shadow: rgba(0,0,0,0.15);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Noto Sans KR', sans-serif;
+  background: linear-gradient(180deg, var(--sky-top) 0%, var(--sky-bottom) 40%, var(--grass) 100%);
+  min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+/* Game-style button */
+.btn-game {
+  background: linear-gradient(180deg, #FFE066 0%, #FFB800 100%);
+  border: 3px solid #CC8800;
+  border-radius: 50px;
+  color: #5C3A00;
+  font-weight: 800;
+  font-size: 1rem;
+  padding: 12px 32px;
+  cursor: pointer;
+  box-shadow: 0 6px 0 #CC8800, 0 8px 15px rgba(0,0,0,0.2);
+  transition: all 0.1s;
+  text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+  letter-spacing: 0.5px;
+}
+
+.btn-game:active {
+  box-shadow: 0 2px 0 #CC8800, 0 3px 8px rgba(0,0,0,0.2);
+  transform: translateY(4px);
+}
+
+.btn-pink {
+  background: linear-gradient(180deg, #FF8EC7 0%, #FF5BAE 100%);
+  border: 3px solid #CC2277;
+  border-radius: 50px;
+  color: white;
+  font-weight: 800;
+  padding: 10px 24px;
+  cursor: pointer;
+  box-shadow: 0 5px 0 #CC2277, 0 7px 12px rgba(0,0,0,0.15);
+  transition: all 0.1s;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+
+.btn-pink:active {
+  box-shadow: 0 2px 0 #CC2277;
+  transform: translateY(3px);
+}
+
+/* Cloud panel */
+.cloud-panel {
+  background: rgba(255,255,255,0.92);
+  border-radius: 24px;
+  border: 3px solid rgba(255,255,255,0.8);
+  box-shadow: 0 8px 32px rgba(135,206,235,0.3), 0 2px 8px rgba(0,0,0,0.1);
+  backdrop-filter: blur(10px);
+}
+
+/* Stage node */
+.stage-node {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  border: 4px solid white;
+  box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 8px 20px rgba(0,0,0,0.15);
+  cursor: pointer;
+  transition: transform 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.8rem;
+  position: relative;
+}
+
+.stage-node:hover {
+  transform: scale(1.1);
+}
+
+.stage-node.active {
+  animation: stagePulse 1s ease-in-out infinite;
+}
+
+@keyframes stagePulse {
+  0%, 100% { box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 0 0 0 rgba(255,215,0,0.7); }
+  50% { box-shadow: 0 6px 0 rgba(0,0,0,0.2), 0 0 0 12px rgba(255,215,0,0); }
+}
+
+/* Character animations */
+.char-idle {
+  animation: charFloat 3s ease-in-out infinite;
+}
+
+@keyframes charFloat {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  25% { transform: translateY(-6px) rotate(-1deg); }
+  75% { transform: translateY(-3px) rotate(1deg); }
+}
+
+.eye-blink {
+  animation: eyeBlink 4s ease-in-out infinite;
+}
+
+@keyframes eyeBlink {
+  0%, 88%, 100% { transform: scaleY(1); }
+  93% { transform: scaleY(0.05); }
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(135,206,235,0.5); border-radius: 2px; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 100;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.modal-sheet {
+  background: white;
+  border-radius: 24px 24px 0 0;
+  width: 100%;
+  max-width: 430px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 24px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Stars decoration */
+.star {
+  position: absolute;
+  font-size: 1rem;
+  animation: starTwinkle 2s ease-in-out infinite;
+}
+
+@keyframes starTwinkle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.7); }
+}
+
+/* Path connector */
+.path-line {
+  position: absolute;
+  background: linear-gradient(90deg, transparent, #D4A96A, transparent);
+  height: 6px;
+  border-radius: 3px;
+}
