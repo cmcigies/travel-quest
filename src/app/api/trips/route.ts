@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { readSheet, appendRow, deleteRow } from '@/lib/sheets'
-import { v4 as uuidv4 } from 'crypto'
 
 function generateId() {
   return Date.now().toString(36) + Math.random().toString(36).substr(2)
