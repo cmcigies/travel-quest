@@ -58,9 +58,9 @@ export default function SchedulePage() {
   // Calculate days
   function getDays(): string[] {
     if (!trip?.start_date || !trip?.end_date) return ['1', '2', '3']
-    const start = new Date(trip.start_date)
-    const end = new Date(trip.end_date)
-    const diff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    const start = new Date(trip.start_date + 'T00:00:00')
+    const end = new Date(trip.end_date + 'T00:00:00')
+    const diff = Math.round(...)
     return Array.from({ length: Math.max(diff, 1) }, (_, i) => String(i + 1))
   }
 
