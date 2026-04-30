@@ -49,21 +49,31 @@ export default function HomePage() {
             <p style={{ fontSize: 14, color: '#888', marginBottom: 24, lineHeight: 1.6 }}>
               구글 계정으로 로그인하고<br/>나만의 여행을 기록해보세요 🗺️
             </p>
+            <p style={{ fontSize: 13, color: '#e07000', fontWeight: 700, background: 'rgba(255,150,0,0.08)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
+              ⚠️ 카카오톡/인스타 등 앱에서는<br/>Chrome·Safari로 열어야 로그인 가능해요
+            </p>
+            {/* 방법 1: 크롬으로 열기 (안드로이드) */}
+            <a
+              href={`googlechrome://navigate?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app')}`}
+              style={{ display: 'block', width: '100%', padding: 15, background: 'linear-gradient(135deg,#4285F4,#1a73e8)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, textAlign: 'center', textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box' }}>
+              🌐 Chrome으로 열기
+            </a>
+            {/* 방법 2: Safari로 열기 (iOS) */}
+            <a
+              href={typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app'}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'block', width: '100%', padding: 15, background: 'linear-gradient(135deg,#34C759,#28a745)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, textAlign: 'center', textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box' }}>
+              🧭 Safari로 열기
+            </a>
+            {/* 방법 3: 주소 복사 */}
             <button
               onClick={() => {
                 const url = typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app'
-                const ua = navigator.userAgent
-                // 안드로이드 → intent로 크롬 강제 오픈
-                if (/Android/i.test(ua)) {
-                  window.location.href = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
-                }
-                // iOS → safari로 오픈 (window.open은 Safari로 열림)
-                else {
-                  window.open(url, '_blank')
-                }
+                navigator.clipboard?.writeText(url).then(() => alert('주소가 복사됐어요!\nChrome 또는 Safari 주소창에 붙여넣기 해주세요'))
               }}
-              style={{ width: '100%', padding: 16, background: 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 16, cursor: 'pointer', boxShadow: '0 4px 0 #CC2277, 0 6px 16px rgba(255,107,157,0.4)' }}>
-              🌏 Chrome으로 열고 로그인
+              style={{ width: '100%', padding: 14, background: '#f0f0f4', border: 'none', borderRadius: 16, color: '#666', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+              📋 주소 복사하기
             </button>
           </div>
         ) : (
