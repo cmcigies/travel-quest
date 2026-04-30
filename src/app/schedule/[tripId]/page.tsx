@@ -12,6 +12,15 @@ interface Trip {
   end_date: string
 }
 
+interface Comment {
+  comment_id: string
+  uid: string
+  name: string
+  avatar: string
+  text: string
+  created_at: string
+}
+
 interface Schedule {
   schedule_id: string
   trip_id: string
@@ -123,6 +132,10 @@ export default function SchedulePage() {
   const mapDebounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const [form, setForm] = useState({ day: '1', time: '', place: '', memo: '' })
+  const [comments, setComments] = useState<Comment[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [showComments, setShowComments] = useState(false)
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -140,9 +153,39 @@ export default function SchedulePage() {
       setTrip(trip || null)
       const sch = await schRes.json()
       setSchedules(Array.isArray(sch) ? sch : [])
+      // 댓글 로드
+      const cRes = await fetch(`/api/comments?trip_id=${tripId}`)
+      const cData = await cRes.json()
+      setComments(Array.isArray(cData) ? cData : [])
     } finally {
       setLoading(false)
     }
+  }
+
+  async function postComment() {
+    if (!newComment.trim()) return
+    setPosting(true)
+    try {
+      const res = await fetch('/api/comments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ trip_id: tripId, text: newComment }),
+      })
+      const c = await res.json()
+      setComments(prev => [...prev, c])
+      setNewComment('')
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  async function deleteComment(comment_id: string) {
+    await fetch('/api/comments', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ comment_id }),
+    })
+    setComments(prev => prev.filter(c => c.comment_id !== comment_id))
   }
 
   function getDays(): string[] {
@@ -361,6 +404,47 @@ export default function SchedulePage() {
               </div>
             )
           })
+        )}
+      </div>
+
+      {/* 댓글 섹션 */}
+      <div style={{ padding: '0 16px 100px' }}>
+        <button onClick={() => setShowComments(v => !v)}
+          style={{ width: '100%', padding: '12px', background: 'white', border: 'none', borderRadius: 18, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: showComments ? 12 : 0 }}>
+          <span style={{ fontWeight: 800, fontSize: 14, color: '#1a1a2e' }}>💬 친구 댓글 {comments.length > 0 ? `(${comments.length})` : ''}</span>
+          <span style={{ fontSize: 12, color: '#aaa' }}>{showComments ? '▲ 접기' : '▼ 펼치기'}</span>
+        </button>
+        {showComments && (
+          <>
+            {comments.map(c => (
+              <div key={c.comment_id} style={{ background: 'white', borderRadius: 16, padding: '12px 14px', marginBottom: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                  {c.avatar
+                    ? <img src={c.avatar} alt="" style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
+                    : <div style={{ width: 26, height: 26, borderRadius: '50%', background: '#FF6B9D', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontSize: 11, fontWeight: 700 }}>{c.name[0]}</div>
+                  }
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{c.name}</span>
+                  <span style={{ fontSize: 11, color: '#bbb', marginLeft: 'auto' }}>{c.created_at.slice(0, 10)}</span>
+                  {session?.user?.email === c.uid && (
+                    <button onClick={() => deleteComment(c.comment_id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 13, color: '#ddd' }}>🗑️</button>
+                  )}
+                </div>
+                <p style={{ fontSize: 13, color: '#444', margin: 0, lineHeight: 1.5 }}>{c.text}</p>
+              </div>
+            ))}
+            {comments.length === 0 && (
+              <p style={{ textAlign: 'center', color: '#ccc', fontSize: 13, padding: '16px 0' }}>아직 댓글이 없어요</p>
+            )}
+            <div style={{ background: 'white', borderRadius: 16, padding: 12, marginTop: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.05)', display: 'flex', gap: 8 }}>
+              <input value={newComment} onChange={e => setNewComment(e.target.value)}
+                placeholder="댓글 남기기..." onKeyDown={e => e.key === 'Enter' && postComment()}
+                style={{ flex: 1, border: '2px solid #f0f0f0', borderRadius: 12, padding: '8px 12px', fontSize: 13, outline: 'none' }} />
+              <button onClick={postComment} disabled={posting || !newComment.trim()}
+                style={{ padding: '8px 14px', background: posting ? '#ccc' : 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', border: 'none', borderRadius: 12, color: 'white', fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>
+                {posting ? '...' : '등록'}
+              </button>
+            </div>
+          </>
         )}
       </div>
 
