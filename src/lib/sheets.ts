@@ -21,30 +21,30 @@ export async function getSheets(): Promise<sheets_v4.Sheets> {
   return initSheets()
 }
 
-export async function readSheet(sheetName: string): Promise<string[][]> {
+export async function readSheet(range: string): Promise<string[][]> {
   const sheets = await initSheets()
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A2:Z`,
+    range,
   })
   return res.data.values || []
 }
 
-export async function appendRow(sheetName: string, values: string[]): Promise<void> {
+export async function appendRow(range: string, values: string[]): Promise<void> {
   const sheets = await initSheets()
   await sheets.spreadsheets.values.append({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A:Z`,
+    range,
     valueInputOption: 'RAW',
     requestBody: { values: [values] },
   })
 }
 
-export async function updateRow(sheetName: string, rowIndex: number, values: string[]): Promise<void> {
+export async function updateRow(range: string, values: string[]): Promise<void> {
   const sheets = await initSheets()
   await sheets.spreadsheets.values.update({
     spreadsheetId: SHEET_ID,
-    range: `${sheetName}!A${rowIndex + 2}:Z${rowIndex + 2}`,
+    range,
     valueInputOption: 'RAW',
     requestBody: { values: [values] },
   })
