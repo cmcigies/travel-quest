@@ -29,6 +29,8 @@ export default function MapPage() {
   const [saving, setSaving] = useState(false)
   const [profileImg, setProfileImg] = useState<string | null>(null)
   const [showImgMenu, setShowImgMenu] = useState(false)
+  const [shareModal, setShareModal] = useState<{trip_id:string, token:string|null}|null>(null)
+  const [sharing, setSharing] = useState(false)
   const [charStyle, setCharStyle] = useState({ top: 0, left: 0 })
   const stageRefs = useRef<(HTMLDivElement | null)[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -158,7 +160,10 @@ export default function MapPage() {
       <div className="sticky top-0 z-40 px-4 pt-4 pb-2">
         <div style={{ background: 'rgba(255,255,255,0.85)', backdropFilter: 'blur(12px)', borderRadius: '20px', padding: '10px 16px' }}>
           <div className="flex items-center justify-between">
-            <button onClick={() => router.push('/')} className="text-2xl">🏠</button>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button onClick={() => router.push('/')} className="text-2xl">🏠</button>
+              <button onClick={() => router.push('/friends')} style={{ background: 'rgba(255,107,157,0.1)', border: 'none', borderRadius: '12px', padding: '6px 10px', fontSize: '16px', cursor: 'pointer' }}>👫</button>
+            </div>
             <h1 className="text-base font-black text-gray-800">
               {userName}의 여행 🗺️
             </h1>
@@ -344,13 +349,23 @@ export default function MapPage() {
                         )}
                       </div>
                       {isSelected && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); setDeleteConfirm(isConfirmDelete ? null : trip.trip_id) }}
-                          style={{
-                            background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: '10px',
-                            padding: '6px 8px', cursor: 'pointer', fontSize: 16, marginLeft: 8, flexShrink: 0,
-                          }}
-                        >🗑️</button>
+                        <div style={{ display: 'flex', gap: 6, marginLeft: 8 }}>
+                          <button
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              setSharing(true)
+                              const res = await fetch('/api/share', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: trip.trip_id }) })
+                              const data = await res.json()
+                              setShareModal({ trip_id: trip.trip_id, token: data.token })
+                              setSharing(false)
+                            }}
+                            style={{ background: 'rgba(66,133,244,0.1)', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', fontSize: 16 }}
+                          >{sharing ? '...' : '🔗'}</button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setDeleteConfirm(isConfirmDelete ? null : trip.trip_id) }}
+                            style={{ background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', fontSize: 16 }}
+                          >🗑️</button>
+                        </div>
                       )}
                     </div>
 
@@ -388,6 +403,35 @@ export default function MapPage() {
 
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
+
+      {/* 공유 모달 */}
+      {shareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={e => { if (e.target === e.currentTarget) setShareModal(null) }}>
+          <div style={{ width: '100%', background: 'white', borderRadius: 24, padding: 24 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>🔗 공유 링크</h2>
+            <div style={{ background: '#f8f9ff', borderRadius: 14, padding: '12px 14px', marginBottom: 16 }}>
+              <p style={{ fontSize: 11, color: '#aaa', marginBottom: 6, fontWeight: 600 }}>공유 링크</p>
+              <p style={{ fontSize: 13, color: '#4285F4', fontWeight: 700, wordBreak: 'break-all' }}>
+                {typeof window !== 'undefined' ? `${window.location.origin}/share/${shareModal.token}` : ''}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/share/${shareModal.token}`); setShareModal(null) }}
+                style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #FF6B9D, #FF5BAE)', border: 'none', borderRadius: 14, color: 'white', fontWeight: 700, cursor: 'pointer' }}>
+                📋 링크 복사
+              </button>
+              <button onClick={async () => {
+                await fetch('/api/share', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: shareModal.trip_id }) })
+                setShareModal(null)
+              }} style={{ padding: '12px 16px', background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: 14, color: '#FF3B30', fontWeight: 700, cursor: 'pointer' }}>
+                공유 끄기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Add Trip FAB */}
       <button onClick={() => setShowAddModal(true)} className="fixed z-50"
