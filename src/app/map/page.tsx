@@ -31,6 +31,10 @@ export default function MapPage() {
   const [showImgMenu, setShowImgMenu] = useState(false)
   const [shareModal, setShareModal] = useState<{trip_id:string, token:string|null}|null>(null)
   const [sharing, setSharing] = useState(false)
+  const [shareTab, setShareTab] = useState<'link'|'friends'>('link')
+  const [myFriends, setMyFriends] = useState<{friend_email:string, status:string}[]>([])
+  const [allowedFriends, setAllowedFriends] = useState<string[]>([])
+  const [permLoading, setPermLoading] = useState(false)
   const [charStyle, setCharStyle] = useState({ top: 0, left: 0 })
   const stageRefs = useRef<(HTMLDivElement | null)[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -346,9 +350,18 @@ export default function MapPage() {
                             onClick={async (e) => {
                               e.stopPropagation()
                               setSharing(true)
-                              const res = await fetch('/api/share', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: trip.trip_id }) })
-                              const data = await res.json()
-                              setShareModal({ trip_id: trip.trip_id, token: data.token })
+                              setShareTab('link')
+                              const [shareRes, friendsRes, permRes] = await Promise.all([
+                                fetch('/api/share', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: trip.trip_id }) }),
+                                fetch('/api/friends'),
+                                fetch(`/api/permissions?trip_id=${trip.trip_id}`),
+                              ])
+                              const shareData = await shareRes.json()
+                              const friendsData = await friendsRes.json()
+                              const permData = await permRes.json()
+                              setShareModal({ trip_id: trip.trip_id, token: shareData.token })
+                              setMyFriends((friendsData.friends || []).filter((f: any) => f.status === 'accepted'))
+                              setAllowedFriends((permData || []).map((p: any) => p.friend_email))
                               setSharing(false)
                             }}
                             style={{ background: 'rgba(66,133,244,0.1)', border: 'none', borderRadius: '10px', padding: '6px 8px', cursor: 'pointer', fontSize: 16 }}
@@ -398,29 +411,103 @@ export default function MapPage() {
 
       {/* 공유 모달 */}
       {shareModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" style={{ background: 'rgba(0,0,0,0.5)' }}
+        <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) setShareModal(null) }}>
-          <div style={{ width: '100%', background: 'white', borderRadius: 24, padding: 24 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 800, marginBottom: 16 }}>🔗 공유 링크</h2>
-            <div style={{ background: '#f8f9ff', borderRadius: 14, padding: '12px 14px', marginBottom: 16 }}>
-              <p style={{ fontSize: 11, color: '#aaa', marginBottom: 6, fontWeight: 600 }}>공유 링크</p>
-              <p style={{ fontSize: 13, color: '#4285F4', fontWeight: 700, wordBreak: 'break-all' }}>
-                {typeof window !== 'undefined' ? `${window.location.origin}/share/${shareModal.token}` : ''}
-              </p>
+          <div style={{ width: '100%', background: 'white', borderRadius: '24px 24px 0 0', padding: '24px 20px 40px', maxHeight: '80vh', overflowY: 'auto' }}>
+            <div style={{ width: 40, height: 4, background: '#ddd', borderRadius: 2, margin: '0 auto 16px' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0 }}>공유 설정</h2>
+              <button onClick={() => setShareModal(null)} style={{ background: 'none', border: 'none', fontSize: 20, color: '#aaa', cursor: 'pointer' }}>✕</button>
             </div>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/share/${shareModal.token}`); setShareModal(null) }}
-                style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg, #FF6B9D, #FF5BAE)', border: 'none', borderRadius: 14, color: 'white', fontWeight: 700, cursor: 'pointer' }}>
-                📋 링크 복사
-              </button>
-              <button onClick={async () => {
-                await fetch('/api/share', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: shareModal.trip_id }) })
-                setShareModal(null)
-              }} style={{ padding: '12px 16px', background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: 14, color: '#FF3B30', fontWeight: 700, cursor: 'pointer' }}>
-                공유 끄기
-              </button>
+
+            {/* 탭 */}
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
+              {(['link', 'friends'] as const).map(t => (
+                <button key={t} onClick={() => setShareTab(t)} style={{
+                  flex: 1, padding: '10px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                  fontWeight: 700, fontSize: 13,
+                  background: shareTab === t ? 'linear-gradient(135deg,#FF6B9D,#FF5BAE)' : '#f0f0f4',
+                  color: shareTab === t ? 'white' : '#666',
+                }}>
+                  {t === 'link' ? '🔗 링크 공유' : '👫 친구 지정'}
+                </button>
+              ))}
             </div>
+
+            {/* 링크 탭 */}
+            {shareTab === 'link' && (
+              <>
+                <div style={{ background: '#f8f9ff', borderRadius: 14, padding: '12px 14px', marginBottom: 16 }}>
+                  <p style={{ fontSize: 11, color: '#aaa', marginBottom: 6, fontWeight: 600 }}>누구나 이 링크로 열람 가능</p>
+                  <p style={{ fontSize: 12, color: '#4285F4', fontWeight: 700, wordBreak: 'break-all' }}>
+                    {typeof window !== 'undefined' ? `${window.location.origin}/share/${shareModal.token}` : ''}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <button onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/share/${shareModal.token}`); setShareModal(null) }}
+                    style={{ flex: 1, padding: '12px', background: 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', border: 'none', borderRadius: 14, color: 'white', fontWeight: 700, cursor: 'pointer' }}>
+                    📋 링크 복사
+                  </button>
+                  <button onClick={async () => {
+                    await fetch('/api/share', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: shareModal.trip_id }) })
+                    setShareModal(null)
+                  }} style={{ padding: '12px 16px', background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: 14, color: '#FF3B30', fontWeight: 700, cursor: 'pointer' }}>
+                    공유 끄기
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* 친구 지정 탭 */}
+            {shareTab === 'friends' && (
+              <>
+                {myFriends.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px 0' }}>
+                    <p style={{ color: '#aaa', fontSize: 14 }}>👫 등록된 친구가 없어요</p>
+                    <p style={{ color: '#ccc', fontSize: 12, marginTop: 6 }}>친구 탭에서 먼저 친구를 추가해주세요</p>
+                  </div>
+                ) : (
+                  <>
+                    <p style={{ fontSize: 12, color: '#888', marginBottom: 12, fontWeight: 600 }}>이 스테이지를 볼 수 있는 친구 선택</p>
+                    {myFriends.map(f => {
+                      const isAllowed = allowedFriends.includes(f.friend_email)
+                      return (
+                        <div key={f.friend_email} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 0', borderBottom: '1px solid #f5f5f5' }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', background: 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: 15, flexShrink: 0 }}>
+                            {f.friend_email[0].toUpperCase()}
+                          </div>
+                          <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.friend_email}</span>
+                          <button
+                            disabled={permLoading}
+                            onClick={async () => {
+                              setPermLoading(true)
+                              if (isAllowed) {
+                                await fetch('/api/permissions', { method: 'DELETE', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: shareModal.trip_id, friend_email: f.friend_email }) })
+                                setAllowedFriends(prev => prev.filter(e => e !== f.friend_email))
+                              } else {
+                                await fetch('/api/permissions', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ trip_id: shareModal.trip_id, friend_email: f.friend_email }) })
+                                setAllowedFriends(prev => [...prev, f.friend_email])
+                              }
+                              setPermLoading(false)
+                            }}
+                            style={{
+                              padding: '7px 16px', borderRadius: 12, border: 'none', cursor: 'pointer',
+                              fontWeight: 700, fontSize: 13, flexShrink: 0,
+                              background: isAllowed ? 'linear-gradient(135deg,#FF6B9D,#FF5BAE)' : '#f0f0f4',
+                              color: isAllowed ? 'white' : '#888',
+                              transition: 'all 0.15s',
+                            }}
+                          >
+                            {isAllowed ? '✓ 공유중' : '공유'}
+                          </button>
+                        </div>
+                      )
+                    })}
+                    <p style={{ fontSize: 11, color: '#bbb', marginTop: 14, textAlign: 'center' }}>공유된 친구는 👫 친구 여행 탭에서 확인할 수 있어요</p>
+                  </>
+                )}
+              </>
+            )}
           </div>
         </div>
       )}
