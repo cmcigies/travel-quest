@@ -23,6 +23,87 @@ interface Schedule {
   created_at: string
 }
 
+// 이동경로 섹션 컴포넌트
+function RouteSection({ from, to, routeKey }: { from: string; to: string; routeKey: string }) {
+  const [activeMode, setActiveMode] = useState<string | null>(null)
+
+  const modes = [
+    { key: 'walking', icon: '🚶', label: '도보', travelmode: 'walking' },
+    { key: 'transit', icon: '🚌', label: '대중교통', travelmode: 'transit' },
+    { key: 'driving', icon: '🚗', label: '자동차', travelmode: 'driving' },
+  ]
+
+  function getMapSrc(travelmode: string) {
+    const origin = encodeURIComponent(from)
+    const dest = encodeURIComponent(to)
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
+    if (apiKey) {
+      return `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin}&destination=${dest}&mode=${travelmode}&language=ko`
+    }
+    // API 키 없으면 일반 maps embed (경로 미지원이지만 출발지 표시)
+    return `https://maps.google.com/maps?saddr=${origin}&daddr=${dest}&dirflg=${travelmode === 'driving' ? 'd' : travelmode === 'transit' ? 'r' : 'w'}&output=embed&hl=ko`
+  }
+
+  return (
+    <div style={{ margin: '0 0 0 22px', padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ width: 2, height: 10, background: '#e0e0e0', borderRadius: 2, flexShrink: 0 }} />
+        <div style={{
+          display: 'inline-flex', alignItems: 'center', gap: 4,
+          background: 'rgba(66,133,244,0.06)',
+          border: '1px solid rgba(66,133,244,0.15)',
+          borderRadius: 20, padding: '4px 10px',
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#4285F4', marginRight: 2 }}>🗺️ 이동</span>
+          {modes.map(m => (
+            <button
+              key={m.key}
+              onClick={() => setActiveMode(activeMode === m.key ? null : m.key)}
+              style={{
+                border: 'none', borderRadius: 12, padding: '3px 8px',
+                cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                background: activeMode === m.key ? '#4285F4' : 'rgba(66,133,244,0.1)',
+                color: activeMode === m.key ? 'white' : '#4285F4',
+                transition: 'all 0.15s',
+              }}
+              title={m.label}
+            >
+              {m.icon}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* iframe 펼침 */}
+      {activeMode && (
+        <div style={{
+          marginTop: 8, marginLeft: 12,
+          borderRadius: 16, overflow: 'hidden',
+          border: '2px solid rgba(66,133,244,0.15)',
+          boxShadow: '0 2px 12px rgba(66,133,244,0.1)',
+        }}>
+          <div style={{
+            padding: '8px 12px', background: 'rgba(66,133,244,0.06)',
+            fontSize: 11, color: '#4285F4', fontWeight: 700,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            {modes.find(m => m.key === activeMode)?.icon}
+            {modes.find(m => m.key === activeMode)?.label} · {from} → {to}
+          </div>
+          <iframe
+            src={getMapSrc(modes.find(m => m.key === activeMode)!.travelmode)}
+            width="100%"
+            height="220"
+            style={{ display: 'block', border: 'none' }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SchedulePage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -245,9 +326,7 @@ export default function SchedulePage() {
         ) : (
           daySchedules.map((s, idx) => {
             const next = daySchedules[idx + 1]
-            const mapsUrl = next
-              ? `https://www.google.com/maps/dir/${encodeURIComponent(s.place)}/${encodeURIComponent(next.place)}`
-              : null
+
             return (
               <div key={s.schedule_id}>
                 {/* 장소 카드 */}
@@ -275,31 +354,9 @@ export default function SchedulePage() {
                   </div>
                 </div>
 
-                {/* 이동시간 링크 — 다음 장소 있을 때만 */}
-                {mapsUrl && (
-                  <div style={{ display: 'flex', alignItems: 'center', margin: '0 0 0 22px', padding: '6px 0' }}>
-                    <div style={{ width: 2, height: 12, background: '#e0e0e0', marginRight: 10, borderRadius: 2 }} />
-                    <a
-                      href={mapsUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: 6,
-                        background: 'rgba(66,133,244,0.08)',
-                        border: '1px solid rgba(66,133,244,0.2)',
-                        borderRadius: 20, padding: '5px 12px',
-                        fontSize: 11, fontWeight: 700, color: '#4285F4',
-                        textDecoration: 'none',
-                      }}
-                    >
-                      🗺️ 경로 보기
-                      <span style={{ display: 'flex', gap: 4 }}>
-                        <span style={{ background: 'rgba(66,133,244,0.12)', borderRadius: 10, padding: '2px 6px' }}>🚶</span>
-                        <span style={{ background: 'rgba(66,133,244,0.12)', borderRadius: 10, padding: '2px 6px' }}>🚌</span>
-                        <span style={{ background: 'rgba(66,133,244,0.12)', borderRadius: 10, padding: '2px 6px' }}>🚗</span>
-                      </span>
-                    </a>
-                  </div>
+                {/* 이동수단 선택 + iframe 펼침 */}
+                {next && (
+                  <RouteSection from={s.place} to={next.place} routeKey={`${s.schedule_id}-${next.schedule_id}`} />
                 )}
               </div>
             )
