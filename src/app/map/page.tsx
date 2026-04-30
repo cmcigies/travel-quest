@@ -12,6 +12,8 @@ interface Trip {
   end_date: string
 }
 
+const STORAGE_KEY = 'travel_quest_profile_img'
+
 export default function MapPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -24,7 +26,15 @@ export default function MapPage() {
   const [deleting, setDeleting] = useState(false)
   const [newTrip, setNewTrip] = useState({ title: '', country: '', city: '', start_date: '', end_date: '' })
   const [saving, setSaving] = useState(false)
+  const [profileImg, setProfileImg] = useState<string | null>(null)
+  const [showImgMenu, setShowImgMenu] = useState(false)
   const charRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) setProfileImg(saved)
+  }, [])
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -84,6 +94,27 @@ export default function MapPage() {
       setSaving(false)
     }
   }
+
+  function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      const result = ev.target?.result as string
+      setProfileImg(result)
+      localStorage.setItem(STORAGE_KEY, result)
+      setShowImgMenu(false)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function resetToGoogle() {
+    setProfileImg(null)
+    localStorage.removeItem(STORAGE_KEY)
+    setShowImgMenu(false)
+  }
+
+  const currentImg = profileImg || session?.user?.image || null
 
   if (status === 'loading' || loading) {
     return (
@@ -145,19 +176,66 @@ export default function MapPage() {
                   {charPos === idx && (
                     <div ref={charRef} className="absolute z-20 transition-all duration-700"
                       style={{ [isLeft ? 'left' : 'right']: '55%', top: '-50px' }}>
-                      <div style={{
-                        width: 60, height: 60,
-                        background: 'linear-gradient(135deg, #FFB6C1, #FF69B4)',
-                        borderRadius: '50%',
-                        border: '3px solid white',
-                        boxShadow: '0 4px 12px rgba(255,105,180,0.4)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '28px',
-                        animation: 'bounce 1s ease-in-out infinite',
-                      }}>
-                        {session?.user?.image
-                          ? <img src={session.user.image} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
-                          : '🐻'}
+                      {/* 이미지 변경 버튼 포함 캐릭터 */}
+                      <div style={{ position: 'relative', display: 'inline-block' }}>
+                        <button
+                          onClick={() => setShowImgMenu(v => !v)}
+                          style={{
+                            width: 60, height: 60,
+                            background: 'linear-gradient(135deg, #FFB6C1, #FF69B4)',
+                            borderRadius: '50%',
+                            border: '3px solid white',
+                            boxShadow: '0 4px 12px rgba(255,105,180,0.4)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: '28px', padding: 0, cursor: 'pointer', overflow: 'hidden',
+                            animation: 'bounce 1s ease-in-out infinite',
+                          }}>
+                          {currentImg
+                            ? <img src={currentImg} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} />
+                            : '🐻'}
+                        </button>
+                        {/* 카메라 아이콘 */}
+                        <div style={{
+                          position: 'absolute', bottom: 0, right: 0,
+                          width: 20, height: 20, borderRadius: '50%',
+                          background: '#FF6B9D', border: '2px solid white',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: 10, cursor: 'pointer',
+                        }}
+                          onClick={() => setShowImgMenu(v => !v)}
+                        >📷</div>
+
+                        {/* 이미지 변경 메뉴 */}
+                        {showImgMenu && (
+                          <div style={{
+                            position: 'absolute', top: 70, left: '50%', transform: 'translateX(-50%)',
+                            background: 'white', borderRadius: '16px',
+                            boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                            padding: '8px', zIndex: 100, width: 160,
+                            border: '1px solid rgba(0,0,0,0.06)',
+                          }}>
+                            <button
+                              onClick={() => fileInputRef.current?.click()}
+                              style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 8 }}
+                            >
+                              🖼️ 사진 변경
+                            </button>
+                            {profileImg && (
+                              <button
+                                onClick={resetToGoogle}
+                                style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 8 }}
+                              >
+                                🔄 구글 사진으로
+                              </button>
+                            )}
+                            <button
+                              onClick={() => setShowImgMenu(false)}
+                              style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, color: '#aaa', cursor: 'pointer', borderRadius: '10px' }}
+                            >
+                              ✕ 닫기
+                            </button>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -180,9 +258,9 @@ export default function MapPage() {
                     }}
                   >
                     {idx + 1}
-                    {/* Stage number badge */}
+                    {/* 배지 — 왼쪽 아래 */}
                     <div style={{
-                      position: 'absolute', top: -6, right: -6,
+                      position: 'absolute', bottom: -4, left: -4,
                       width: 22, height: 22, borderRadius: '50%',
                       background: '#FF3B5C', color: 'white',
                       fontSize: 11, fontWeight: 900,
@@ -197,7 +275,6 @@ export default function MapPage() {
                       position: 'absolute',
                       [isLeft ? 'left' : 'right']: 35,
                       bottom: -32, width: 3, height: 32,
-                      background: 'rgba(255,165,0,0.4)',
                       borderLeft: '3px dashed rgba(255,165,0,0.5)',
                     }} />
                   )}
@@ -229,7 +306,6 @@ export default function MapPage() {
                         )}
                       </div>
 
-                      {/* Delete button - only show on selected */}
                       {isSelected && (
                         <button
                           onClick={(e) => {
@@ -248,7 +324,6 @@ export default function MapPage() {
                       )}
                     </div>
 
-                    {/* Delete confirmation */}
                     {isConfirmDelete && (
                       <div style={{
                         marginTop: 10, padding: '10px', borderRadius: '12px',
@@ -285,7 +360,6 @@ export default function MapPage() {
                       </div>
                     )}
 
-                    {/* Tap hint */}
                     {isSelected && !isConfirmDelete && (
                       <div style={{ marginTop: 8, fontSize: 11, color: '#FF6B9D', fontWeight: 700, textAlign: 'center' }}>
                         한 번 더 탭하면 스케쥴로 이동 ✨
@@ -298,6 +372,15 @@ export default function MapPage() {
           </div>
         )}
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleImageUpload}
+      />
 
       {/* Add Trip FAB */}
       <button
