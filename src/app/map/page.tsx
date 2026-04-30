@@ -300,15 +300,7 @@ export default function MapPage() {
                       }}
                     >
                       {idx + 1}
-                      {/* 배지 — 왼쪽 아래 */}
-                      <div style={{
-                        position: 'absolute', bottom: -4, left: -4,
-                        width: 22, height: 22, borderRadius: '50%',
-                        background: '#FF3B5C', color: 'white',
-                        fontSize: 11, fontWeight: 900,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        border: '2px solid white',
-                      }}>{idx + 1}</div>
+  
                     </button>
                   </div>
 
