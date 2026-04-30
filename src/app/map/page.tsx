@@ -163,48 +163,18 @@ export default function MapPage() {
               {userName}의 여행 🗺️
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {/* 헤더 프로필 — 고정, 클릭하면 이미지 변경 메뉴 */}
-              <div style={{ position: 'relative' }}>
-                <button
-                  onClick={() => setShowImgMenu(v => !v)}
-                  style={{
-                    width: 34, height: 34, borderRadius: '50%',
-                    border: '2px solid #FF6B9D',
-                    overflow: 'hidden', padding: 0, cursor: 'pointer',
-                    background: '#FFB6C1',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 18, flexShrink: 0,
-                  }}
-                >
-                  {currentImg
-                    ? <img src={currentImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    : '🐻'}
-                </button>
-                {/* 이미지 변경 드롭다운 */}
-                {showImgMenu && (
-                  <div style={{
-                    position: 'absolute', top: 42, right: 0,
-                    background: 'white', borderRadius: '16px',
-                    boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-                    padding: '8px', zIndex: 200, width: 160,
-                    border: '1px solid rgba(0,0,0,0.06)',
-                  }}>
-                    <button onClick={() => fileInputRef.current?.click()}
-                      style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                      🖼️ 사진 변경
-                    </button>
-                    {profileImg && (
-                      <button onClick={resetToGoogle}
-                        style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 8 }}>
-                        🔄 구글 사진으로
-                      </button>
-                    )}
-                    <button onClick={() => setShowImgMenu(false)}
-                      style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, color: '#aaa', cursor: 'pointer', borderRadius: '10px' }}>
-                      ✕ 닫기
-                    </button>
-                  </div>
-                )}
+              {/* 헤더 프로필 — 표시만 */}
+              <div style={{
+                width: 34, height: 34, borderRadius: '50%',
+                border: '2px solid #FF6B9D',
+                overflow: 'hidden',
+                background: '#FFB6C1',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 18, flexShrink: 0,
+              }}>
+                {currentImg
+                  ? <img src={currentImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : '🐻'}
               </div>
               <button onClick={() => signOut({ callbackUrl: '/' })} style={{ background: 'rgba(255,107,107,0.1)', border: 'none', borderRadius: '12px', padding: '6px 12px', fontSize: '12px', color: '#FF6B6B', fontWeight: 700 }}>
                 로그아웃
@@ -217,7 +187,7 @@ export default function MapPage() {
       {/* Stage Map — relative container for absolute character */}
       <div ref={mapRef} className="px-6 py-4 relative">
 
-        {/* 캐릭터 — 절대 위치, 부드럽게 이동 */}
+        {/* 캐릭터 — 절대 위치, 부드럽게 이동, 탭하면 이미지 변경 */}
         {trips.length > 0 && (
           <div
             style={{
@@ -227,22 +197,59 @@ export default function MapPage() {
               transition: 'top 0.6s cubic-bezier(0.34,1.56,0.64,1), left 0.6s cubic-bezier(0.34,1.56,0.64,1)',
               zIndex: 30,
               animation: 'floatChar 2s ease-in-out infinite',
-              pointerEvents: 'none',
             }}
           >
-            <div style={{
-              width: 90, height: 90,
-              borderRadius: '50%',
-              border: '4px solid white',
-              boxShadow: '0 6px 20px rgba(255,105,180,0.5)',
-              overflow: 'hidden',
-              background: 'linear-gradient(135deg, #FFB6C1, #FF69B4)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 44,
-            }}>
-              {currentImg
-                ? <img src={currentImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : '🐻'}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setShowImgMenu(v => !v)}
+                style={{
+                  width: 58, height: 58,
+                  borderRadius: '50%',
+                  border: '3px solid white',
+                  boxShadow: '0 6px 20px rgba(255,105,180,0.5)',
+                  overflow: 'hidden',
+                  background: 'linear-gradient(135deg, #FFB6C1, #FF69B4)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 28, padding: 0, cursor: 'pointer',
+                }}
+              >
+                {currentImg
+                  ? <img src={currentImg} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : '🐻'}
+              </button>
+              {/* 📷 아이콘 */}
+              <div style={{
+                position: 'absolute', bottom: 0, right: 0,
+                width: 18, height: 18, borderRadius: '50%',
+                background: '#FF6B9D', border: '2px solid white',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 9, pointerEvents: 'none',
+              }}>📷</div>
+              {/* 이미지 변경 메뉴 */}
+              {showImgMenu && (
+                <div style={{
+                  position: 'absolute', top: 66, left: '50%', transform: 'translateX(-50%)',
+                  background: 'white', borderRadius: '16px',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+                  padding: '8px', zIndex: 200, width: 160,
+                  border: '1px solid rgba(0,0,0,0.06)',
+                }}>
+                  <button onClick={() => fileInputRef.current?.click()}
+                    style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, fontWeight: 700, cursor: 'pointer', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    🖼️ 사진 변경
+                  </button>
+                  {profileImg && (
+                    <button onClick={resetToGoogle}
+                      style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, fontWeight: 600, color: '#888', cursor: 'pointer', borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                      🔄 구글 사진으로
+                    </button>
+                  )}
+                  <button onClick={() => setShowImgMenu(false)}
+                    style={{ width: '100%', padding: '10px 12px', textAlign: 'left', border: 'none', background: 'none', fontSize: 13, color: '#aaa', cursor: 'pointer', borderRadius: '10px' }}>
+                    ✕ 닫기
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
