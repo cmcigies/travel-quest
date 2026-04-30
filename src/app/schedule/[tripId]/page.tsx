@@ -188,6 +188,22 @@ export default function SchedulePage() {
     setComments(prev => prev.filter(c => c.comment_id !== comment_id))
   }
 
+  async function moveSchedule(idx: number, dir: 'up' | 'down') {
+    const newList = [...daySchedules]
+    const target = dir === 'up' ? idx - 1 : idx + 1
+    if (target < 0 || target >= newList.length) return
+    // 두 항목의 time을 교환
+    const tempTime = newList[idx].time
+    newList[idx] = { ...newList[idx], time: newList[target].time }
+    newList[target] = { ...newList[target], time: tempTime }
+    // 두 항목 모두 서버에 업데이트
+    await Promise.all([
+      fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newList[idx]) }),
+      fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newList[target]) }),
+    ])
+    await fetchData()
+  }
+
   function getDays(): string[] {
     if (!trip?.start_date || !trip?.end_date) return ['1', '2', '3']
     const start = new Date(trip.start_date + 'T00:00:00')
@@ -385,7 +401,14 @@ export default function SchedulePage() {
                     <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{s.place}</div>
                     {s.memo && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{s.memo}</div>}
                   </div>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
+                    {/* 순서 이동 */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      <button onClick={() => moveSchedule(idx, 'up')} disabled={idx === 0}
+                        style={{ background: idx === 0 ? 'rgba(0,0,0,0.04)' : 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 8, width: 26, height: 22, cursor: idx === 0 ? 'default' : 'pointer', fontSize: 10, color: idx === 0 ? '#ccc' : '#FF6B9D', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▲</button>
+                      <button onClick={() => moveSchedule(idx, 'down')} disabled={idx === daySchedules.length - 1}
+                        style={{ background: idx === daySchedules.length - 1 ? 'rgba(0,0,0,0.04)' : 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 8, width: 26, height: 22, cursor: idx === daySchedules.length - 1 ? 'default' : 'pointer', fontSize: 10, color: idx === daySchedules.length - 1 ? '#ccc' : '#FF6B9D', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▼</button>
+                    </div>
                     <button onClick={() => openEdit(s)} style={{
                       background: 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 10,
                       padding: '6px 8px', cursor: 'pointer', fontSize: 14,
