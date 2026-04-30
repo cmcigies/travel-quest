@@ -28,6 +28,44 @@ interface Comment {
   created_at: string
 }
 
+function ShareRouteSection({ from, to }: { from: string; to: string }) {
+  const [activeMode, setActiveMode] = useState<string | null>(null)
+  const modes = [
+    { key: 'walking', icon: '🚶', label: '도보', dirflg: 'w', travelmode: 'walking' },
+    { key: 'transit', icon: '🚌', label: '대중교통', dirflg: 'r', travelmode: 'transit' },
+    { key: 'driving', icon: '🚗', label: '자동차', dirflg: 'd', travelmode: 'driving' },
+  ]
+  function getMapSrc(m: typeof modes[0]) {
+    const o = encodeURIComponent(from), d = encodeURIComponent(to)
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
+    if (apiKey) return `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${o}&destination=${d}&mode=${m.travelmode}&language=ko`
+    return `https://maps.google.com/maps?saddr=${o}&daddr=${d}&dirflg=${m.dirflg}&output=embed&hl=ko`
+  }
+  return (
+    <div style={{ margin: '0 0 0 22px', padding: '4px 0' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <div style={{ width: 2, height: 10, background: '#e0e0e0', borderRadius: 2, flexShrink: 0 }} />
+        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'rgba(66,133,244,0.06)', border: '1px solid rgba(66,133,244,0.15)', borderRadius: 20, padding: '4px 10px' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#4285F4', marginRight: 2 }}>🗺️ 이동</span>
+          {modes.map(m => (
+            <button key={m.key} onClick={() => setActiveMode(activeMode === m.key ? null : m.key)}
+              style={{ border: 'none', borderRadius: 12, padding: '3px 8px', cursor: 'pointer', fontSize: 13, fontWeight: 700, background: activeMode === m.key ? '#4285F4' : 'rgba(66,133,244,0.1)', color: activeMode === m.key ? 'white' : '#4285F4', transition: 'all 0.15s' }}
+              title={m.label}>{m.icon}</button>
+          ))}
+        </div>
+      </div>
+      {activeMode && (
+        <div style={{ marginTop: 8, marginLeft: 12, borderRadius: 16, overflow: 'hidden', border: '2px solid rgba(66,133,244,0.15)', boxShadow: '0 2px 12px rgba(66,133,244,0.1)' }}>
+          <div style={{ padding: '8px 12px', background: 'rgba(66,133,244,0.06)', fontSize: 11, color: '#4285F4', fontWeight: 700 }}>
+            {modes.find(m => m.key === activeMode)?.icon} {modes.find(m => m.key === activeMode)?.label} · {from} → {to}
+          </div>
+          <iframe src={getMapSrc(modes.find(m => m.key === activeMode)!)} width="100%" height="220" style={{ display: 'block', border: 'none' }} loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function SharePage() {
   const params = useParams()
   const token = params.token as string
@@ -132,9 +170,13 @@ export default function SharePage() {
   return (
     <div style={{ minHeight: '100vh', background: '#f8f9ff' }}>
       {/* Header */}
-      <div style={{ background: 'linear-gradient(135deg, #FF6B9D, #FF5BAE)', padding: '24px 20px 20px' }}>
-        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', marginBottom: 4 }}>
-          🔗 공유된 여행 일정
+      <div style={{ background: 'linear-gradient(135deg, #FF6B9D, #FF5BAE)', padding: '16px 20px 20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+          <button onClick={() => window.history.length > 1 ? window.history.back() : window.location.href = '/map'}
+            style={{ background: 'rgba(255,255,255,0.25)', border: 'none', borderRadius: 12, padding: '6px 12px', color: 'white', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+            ← 뒤로
+          </button>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>🔗 공유된 여행 일정</span>
         </div>
         <h1 style={{ fontSize: 22, fontWeight: 900, color: 'white', margin: 0 }}>{trip?.title}</h1>
         <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.85)', marginTop: 6 }}>
@@ -177,16 +219,7 @@ export default function SharePage() {
                   {s.memo && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{s.memo}</div>}
                 </div>
               </div>
-              {next && (
-                <div style={{ display: 'flex', alignItems: 'center', margin: '4px 0 4px 22px' }}>
-                  <div style={{ width: 2, height: 10, background: '#e0e0e0', marginRight: 8, borderRadius: 2 }} />
-                  <a href={`https://www.google.com/maps/dir/${encodeURIComponent(s.place)}/${encodeURIComponent(next.place)}`}
-                    target="_blank" rel="noopener noreferrer"
-                    style={{ fontSize: 11, color: '#4285F4', fontWeight: 700, textDecoration: 'none' }}>
-                    🗺️ 경로 보기 🚶 🚌 🚗
-                  </a>
-                </div>
-              )}
+              {next && <ShareRouteSection from={s.place} to={next.place} />}
             </div>
           )
         })}
