@@ -81,7 +81,13 @@ export default function SchedulePage() {
 
   const daySchedules = schedules
     .filter(s => s.day === selectedDay)
-    .sort((a, b) => a.time.localeCompare(b.time))
+    .sort((a, b) => {
+      // 시간 없으면 맨 뒤
+      if (!a.time && !b.time) return 0
+      if (!a.time) return 1
+      if (!b.time) return -1
+      return a.time.localeCompare(b.time)
+    })
 
   function handlePlaceInput(val: string, isEdit = false) {
     if (isEdit) {
@@ -237,34 +243,67 @@ export default function SchedulePage() {
             <p style={{ color: '#ccc', fontSize: 13, marginTop: 4 }}>아래 + 버튼으로 추가해보세요</p>
           </div>
         ) : (
-          daySchedules.map((s, idx) => (
-            <div key={s.schedule_id} style={{
-              background: 'white', borderRadius: 20, padding: '14px 16px',
-              marginBottom: 12, boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-              display: 'flex', alignItems: 'flex-start', gap: 12,
-            }}>
-              <div style={{ flexShrink: 0, textAlign: 'center' }}>
-                <div style={{ fontSize: 12, fontWeight: 800, color: '#FF6B9D' }}>{s.time || '--:--'}</div>
-                {idx < daySchedules.length - 1 && (
-                  <div style={{ width: 2, height: 30, background: '#f0f0f0', margin: '4px auto 0' }} />
+          daySchedules.map((s, idx) => {
+            const next = daySchedules[idx + 1]
+            const mapsUrl = next
+              ? `https://www.google.com/maps/dir/${encodeURIComponent(s.place)}/${encodeURIComponent(next.place)}`
+              : null
+            return (
+              <div key={s.schedule_id}>
+                {/* 장소 카드 */}
+                <div style={{
+                  background: 'white', borderRadius: 20, padding: '14px 16px',
+                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
+                  display: 'flex', alignItems: 'flex-start', gap: 12,
+                }}>
+                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 44 }}>
+                    <div style={{ fontSize: 12, fontWeight: 800, color: '#FF6B9D' }}>{s.time || '--:--'}</div>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{s.place}</div>
+                    {s.memo && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{s.memo}</div>}
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                    <button onClick={() => openEdit(s)} style={{
+                      background: 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 10,
+                      padding: '6px 8px', cursor: 'pointer', fontSize: 14,
+                    }}>✏️</button>
+                    <button onClick={() => handleDelete(s.schedule_id)} disabled={deleting === s.schedule_id} style={{
+                      background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: 10,
+                      padding: '6px 8px', cursor: 'pointer', fontSize: 14,
+                    }}>🗑️</button>
+                  </div>
+                </div>
+
+                {/* 이동시간 링크 — 다음 장소 있을 때만 */}
+                {mapsUrl && (
+                  <div style={{ display: 'flex', alignItems: 'center', margin: '0 0 0 22px', padding: '6px 0' }}>
+                    <div style={{ width: 2, height: 12, background: '#e0e0e0', marginRight: 10, borderRadius: 2 }} />
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6,
+                        background: 'rgba(66,133,244,0.08)',
+                        border: '1px solid rgba(66,133,244,0.2)',
+                        borderRadius: 20, padding: '5px 12px',
+                        fontSize: 11, fontWeight: 700, color: '#4285F4',
+                        textDecoration: 'none',
+                      }}
+                    >
+                      🗺️ 경로 보기
+                      <span style={{ display: 'flex', gap: 4 }}>
+                        <span style={{ background: 'rgba(66,133,244,0.12)', borderRadius: 10, padding: '2px 6px' }}>🚶</span>
+                        <span style={{ background: 'rgba(66,133,244,0.12)', borderRadius: 10, padding: '2px 6px' }}>🚌</span>
+                        <span style={{ background: 'rgba(66,133,244,0.12)', borderRadius: 10, padding: '2px 6px' }}>🚗</span>
+                      </span>
+                    </a>
+                  </div>
                 )}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 700, fontSize: 14, color: '#1a1a2e' }}>{s.place}</div>
-                {s.memo && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{s.memo}</div>}
-              </div>
-              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                <button onClick={() => openEdit(s)} style={{
-                  background: 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 10,
-                  padding: '6px 8px', cursor: 'pointer', fontSize: 14,
-                }}>✏️</button>
-                <button onClick={() => handleDelete(s.schedule_id)} disabled={deleting === s.schedule_id} style={{
-                  background: 'rgba(255,59,48,0.1)', border: 'none', borderRadius: 10,
-                  padding: '6px 8px', cursor: 'pointer', fontSize: 14,
-                }}>🗑️</button>
-              </div>
-            </div>
-          ))
+            )
+          })
         )}
       </div>
 
