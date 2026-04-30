@@ -49,32 +49,44 @@ export default function HomePage() {
             <p style={{ fontSize: 14, color: '#888', marginBottom: 24, lineHeight: 1.6 }}>
               구글 계정으로 로그인하고<br/>나만의 여행을 기록해보세요 🗺️
             </p>
-            <p style={{ fontSize: 13, color: '#e07000', fontWeight: 700, background: 'rgba(255,150,0,0.08)', borderRadius: 12, padding: '10px 14px', marginBottom: 16 }}>
-              ⚠️ 카카오톡/인스타 등 앱에서는<br/>Chrome·Safari로 열어야 로그인 가능해요
-            </p>
-            {/* 방법 1: 크롬으로 열기 (안드로이드) */}
-            <a
-              href={`googlechrome://navigate?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app')}`}
-              style={{ display: 'block', width: '100%', padding: 15, background: 'linear-gradient(135deg,#4285F4,#1a73e8)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, textAlign: 'center', textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box' }}>
-              🌐 Chrome으로 열기
-            </a>
-            {/* 방법 2: Safari로 열기 (iOS) */}
-            <a
-              href={typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app'}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{ display: 'block', width: '100%', padding: 15, background: 'linear-gradient(135deg,#34C759,#28a745)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, textAlign: 'center', textDecoration: 'none', marginBottom: 10, boxSizing: 'border-box' }}>
-              🧭 Safari로 열기
-            </a>
-            {/* 방법 3: 주소 복사 */}
+            {/* 카카오톡 안내 */}
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 36, marginBottom: 8 }}>📱</div>
+              <p style={{ fontSize: 15, fontWeight: 800, color: '#1a1a2e', marginBottom: 6 }}>외부 브라우저로 열어주세요</p>
+              <p style={{ fontSize: 13, color: '#888', lineHeight: 1.6 }}>
+                카카오톡 인앱 브라우저에서는<br/>Google 로그인이 불가해요
+              </p>
+            </div>
+
+            {/* 카카오톡 안드로이드: 우측 상단 메뉴 안내 */}
+            <div style={{ background: '#FFF9E6', border: '1px solid #FFD700', borderRadius: 16, padding: '14px 16px', marginBottom: 16 }}>
+              <p style={{ fontSize: 13, fontWeight: 800, color: '#8B6900', marginBottom: 10 }}>📌 카카오톡에서 여는 방법</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#FFD700', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0 }}>1</div>
+                <p style={{ fontSize: 13, color: '#666', margin: 0 }}>화면 <strong>우측 하단 ···</strong> 버튼 탭</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 24, height: 24, borderRadius: '50%', background: '#FFD700', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900, flexShrink: 0 }}>2</div>
+                <p style={{ fontSize: 13, color: '#666', margin: 0 }}><strong>"다른 브라우저로 열기"</strong> 선택</p>
+              </div>
+            </div>
+
+            {/* 주소 복사 버튼 */}
             <button
               onClick={() => {
-                const url = typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app'
-                navigator.clipboard?.writeText(url).then(() => alert('주소가 복사됐어요!\nChrome 또는 Safari 주소창에 붙여넣기 해주세요'))
+                const url = 'https://travel-quest-plum.vercel.app'
+                if (navigator.clipboard) {
+                  navigator.clipboard.writeText(url).then(() => alert('✅ 주소가 복사됐어요!\n\nChrome 또는 Safari를 열고\n주소창에 붙여넣기 해주세요'))
+                } else {
+                  alert('주소: ' + url + '\n\nChrome 또는 Safari 주소창에 입력해주세요')
+                }
               }}
-              style={{ width: '100%', padding: 14, background: '#f0f0f4', border: 'none', borderRadius: 16, color: '#666', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}>
+              style={{ width: '100%', padding: 15, background: 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, cursor: 'pointer', boxShadow: '0 4px 0 #CC2277, 0 6px 16px rgba(255,107,157,0.4)' }}>
               📋 주소 복사하기
             </button>
+            <p style={{ fontSize: 11, color: '#bbb', marginTop: 10, textAlign: 'center' }}>
+              복사 후 Chrome / Safari 주소창에 붙여넣기
+            </p>
           </div>
         ) : (
           <div style={{ background: 'white', borderRadius: 24, padding: 28, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
