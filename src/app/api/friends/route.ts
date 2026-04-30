@@ -21,12 +21,18 @@ export async function GET() {
       created_at: r[4] || '',
     }))
 
-  // 친구들의 공개 trips 조회
-  const tripRows = await readSheet('trips!A2:J')
-  const friendEmails = friends.filter(f => f.status === 'accepted').map(f => f.friend_email)
+  // 내게 권한이 부여된 trips 조회 (trip_permissions 기준)
+  const [tripRows, permRows] = await Promise.all([
+    readSheet('trips!A2:J'),
+    readSheet('trip_permissions!A2:C'),
+  ])
+  // 내 이메일이 friend_email로 등록된 권한
+  const allowedTripIds = permRows
+    .filter(r => r[1] === uid)
+    .map(r => r[0])
 
   const friendTrips = tripRows
-    .filter(r => friendEmails.includes(r[1]) && r[9] === 'true')
+    .filter(r => allowedTripIds.includes(r[0]))
     .map(r => ({
       trip_id: r[0],
       owner_email: r[1],
