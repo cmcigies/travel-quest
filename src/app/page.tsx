@@ -45,29 +45,25 @@ export default function HomePage() {
 
         {/* WebView 경고 */}
         {webView ? (
-          <div style={{ background: 'white', borderRadius: 24, padding: 24, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
-            <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
-            <h2 style={{ fontSize: 16, fontWeight: 800, color: '#1a1a2e', marginBottom: 8 }}>인앱 브라우저에서는<br/>Google 로그인이 불가해요</h2>
-            <p style={{ fontSize: 13, color: '#888', marginBottom: 20, lineHeight: 1.6 }}>
-              카카오톡, 인스타그램 등 앱 내부 브라우저에서는<br/>
-              Google 정책으로 로그인이 차단돼요.<br/>
-              <strong>Safari 또는 Chrome</strong>으로 열어주세요.
+          <div style={{ background: 'white', borderRadius: 24, padding: 28, boxShadow: '0 8px 32px rgba(0,0,0,0.1)' }}>
+            <p style={{ fontSize: 14, color: '#888', marginBottom: 24, lineHeight: 1.6 }}>
+              구글 계정으로 로그인하고<br/>나만의 여행을 기록해보세요 🗺️
             </p>
-            <div style={{ background: '#f8f9ff', borderRadius: 14, padding: '12px 16px', marginBottom: 16, textAlign: 'left' }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: '#666', marginBottom: 6 }}>📋 이 주소를 복사해서 브라우저에서 열기</p>
-              <p style={{ fontSize: 12, color: '#4285F4', wordBreak: 'break-all', fontWeight: 600 }}>
-                {typeof window !== 'undefined' ? window.location.origin : 'https://travel-quest-plum.vercel.app'}
-              </p>
-            </div>
             <button
-              onClick={() => { typeof navigator !== 'undefined' && navigator.clipboard?.writeText(typeof window !== 'undefined' ? window.location.origin : '') }}
-              style={{ width: '100%', padding: 14, background: 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 15, cursor: 'pointer' }}>
-              📋 주소 복사하기
-            </button>
-            {/* 그래도 시도 버튼 */}
-            <button onClick={() => signIn('google', { callbackUrl: '/map' })}
-              style={{ width: '100%', marginTop: 10, padding: 12, background: 'none', border: '2px solid #ddd', borderRadius: 16, color: '#aaa', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>
-              그래도 로그인 시도하기
+              onClick={() => {
+                const url = typeof window !== 'undefined' ? window.location.href : 'https://travel-quest-plum.vercel.app'
+                const ua = navigator.userAgent
+                // 안드로이드 → intent로 크롬 강제 오픈
+                if (/Android/i.test(ua)) {
+                  window.location.href = `intent://${url.replace(/^https?:\/\//, '')}#Intent;scheme=https;package=com.android.chrome;end`
+                }
+                // iOS → safari로 오픈 (window.open은 Safari로 열림)
+                else {
+                  window.open(url, '_blank')
+                }
+              }}
+              style={{ width: '100%', padding: 16, background: 'linear-gradient(135deg,#FF6B9D,#FF5BAE)', border: 'none', borderRadius: 16, color: 'white', fontWeight: 800, fontSize: 16, cursor: 'pointer', boxShadow: '0 4px 0 #CC2277, 0 6px 16px rgba(255,107,157,0.4)' }}>
+              🌏 Chrome으로 열고 로그인
             </button>
           </div>
         ) : (
