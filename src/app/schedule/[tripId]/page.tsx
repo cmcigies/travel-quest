@@ -130,6 +130,7 @@ export default function SchedulePage() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [mapQuery, setMapQuery] = useState('')
   const mapDebounceRef = useRef<NodeJS.Timeout | null>(null)
+  const dayTabsRef = useRef<HTMLDivElement | null>(null)
 
   const [form, setForm] = useState({ day: '1', time: '', place: '', memo: '' })
   const [comments, setComments] = useState<Comment[]>([])
@@ -141,6 +142,18 @@ export default function SchedulePage() {
     if (status === 'unauthenticated') router.push('/')
     if (status === 'authenticated') fetchData()
   }, [status])
+
+  useEffect(() => {
+    const el = dayTabsRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY === 0) return
+      e.preventDefault()
+      el.scrollLeft += e.deltaY
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [])
 
   async function fetchData() {
     try {
@@ -357,7 +370,7 @@ export default function SchedulePage() {
         </div>
 
         {/* Day tabs */}
-        <div style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '0 16px 12px', scrollbarWidth: 'none' }}>
+        <div ref={dayTabsRef} style={{ overflowX: 'auto', display: 'flex', gap: 8, padding: '0 16px 12px', scrollbarWidth: 'none' }}>
           {days.map(day => (
             <button key={day} onClick={() => setSelectedDay(day)} style={{
               flexShrink: 0, padding: '8px 16px', borderRadius: 16,
