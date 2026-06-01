@@ -153,7 +153,7 @@ export default function SchedulePage() {
     }
     el.addEventListener('wheel', onWheel, { passive: false })
     return () => el.removeEventListener('wheel', onWheel)
-  }, [])
+  }, [loading])
 
   async function fetchData() {
     try {
