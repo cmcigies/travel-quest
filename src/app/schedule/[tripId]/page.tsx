@@ -131,12 +131,12 @@ export default function SchedulePage() {
 
   // 드래그 순서용 로컬 상태
   const [localOrder, setLocalOrder] = useState<string[]>([])
+  const localOrderRef = useRef<string[]>([])   // stale closure 방지용 ref
   const dragIdx = useRef<number | null>(null)
   const [draggingIdx, setDraggingIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   // 터치 드래그용
   const touchDragIdx = useRef<number | null>(null)
-  const touchDragOverIdx = useRef<number | null>(null)
   const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const [mapQuery, setMapQuery] = useState('')
   const mapDebounceRef = useRef<NodeJS.Timeout | null>(null)
@@ -211,13 +211,12 @@ export default function SchedulePage() {
     setComments(prev => prev.filter(c => c.comment_id !== comment_id))
   }
 
-  async function reorderSchedule(newOrderIds?: string[]) {
-    const orderedIds = newOrderIds ?? localOrder
+  async function reorderSchedule() {
+    const orderedIds = localOrderRef.current   // ref에서 읽어 stale 방지
     const ordered = orderedIds
       .map(id => rawDaySchedules.find(s => s.schedule_id === id))
       .filter(Boolean) as typeof rawDaySchedules
     if (ordered.length === 0) return
-    // 기존 시간값들을 새 순서에 재할당
     const oldTimes = rawDaySchedules.map(s => s.time)
     const updated = ordered.map((s, i) => ({ ...s, time: oldTimes[i] }))
     await Promise.all(
@@ -254,7 +253,9 @@ export default function SchedulePage() {
 
   // localOrder로 표시 순서 결정 (드래그 즉시 반영)
   useEffect(() => {
-    setLocalOrder(rawDaySchedules.map(s => s.schedule_id))
+    const ids = rawDaySchedules.map(s => s.schedule_id)
+    localOrderRef.current = ids
+    setLocalOrder(ids)
   }, [selectedDay, schedules])
 
   const daySchedules = localOrder.length > 0
@@ -263,11 +264,11 @@ export default function SchedulePage() {
 
   function applyLocalReorder(fromIdx: number, toIdx: number) {
     if (fromIdx === toIdx) return
-    const newOrder = [...localOrder]
+    const newOrder = [...localOrderRef.current]  // ref에서 읽어 항상 최신값 사용
     const [moved] = newOrder.splice(fromIdx, 1)
     newOrder.splice(toIdx, 0, moved)
-    setLocalOrder(newOrder)
-    return newOrder
+    localOrderRef.current = newOrder             // ref 즉시 업데이트
+    setLocalOrder(newOrder)                      // 렌더링용 state 업데이트
   }
 
   function handleTouchStart(idx: number) {
@@ -282,10 +283,9 @@ export default function SchedulePage() {
     const cardEl = el?.closest('[data-drag-idx]')
     if (!cardEl) return
     const overIdx = parseInt(cardEl.getAttribute('data-drag-idx') || '-1')
-    if (overIdx < 0 || overIdx === touchDragOverIdx.current) return
-    touchDragOverIdx.current = overIdx
+    if (overIdx < 0 || overIdx === touchDragIdx.current) return
     setDragOverIdx(overIdx)
-    if (touchDragIdx.current !== null && touchDragIdx.current !== overIdx) {
+    if (touchDragIdx.current !== null) {
       applyLocalReorder(touchDragIdx.current, overIdx)
       touchDragIdx.current = overIdx
     }
@@ -293,11 +293,9 @@ export default function SchedulePage() {
 
   function handleTouchEnd() {
     if (touchDragIdx.current !== null) {
-      const finalOrder = localOrder
-      reorderSchedule(finalOrder)
+      reorderSchedule()  // localOrderRef.current를 직접 읽음
     }
     touchDragIdx.current = null
-    touchDragOverIdx.current = null
     setDraggingIdx(null)
     setDragOverIdx(null)
   }
@@ -478,7 +476,7 @@ export default function SchedulePage() {
                     e.dataTransfer.dropEffect = 'move'
                     if (dragIdx.current !== null && dragIdx.current !== idx) {
                       setDragOverIdx(idx)
-                      applyLocalReorder(dragIdx.current, idx)
+                      applyLocalReorder(dragIdx.current, idx)  // ref 동기 업데이트
                       dragIdx.current = idx
                     }
                   }}
@@ -488,7 +486,7 @@ export default function SchedulePage() {
                     setDragOverIdx(null)
                     setDraggingIdx(null)
                     dragIdx.current = null
-                    reorderSchedule()
+                    reorderSchedule()  // localOrderRef.current를 직접 읽음
                   }}
                   onDragEnd={() => {
                     dragIdx.current = null
