@@ -128,6 +128,8 @@ export default function SchedulePage() {
   const [editTarget, setEditTarget] = useState<Schedule | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+  const dragIdx = useRef<number | null>(null)
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
   const [mapQuery, setMapQuery] = useState('')
   const mapDebounceRef = useRef<NodeJS.Timeout | null>(null)
   const dayTabsRef = useRef<HTMLDivElement | null>(null)
@@ -201,19 +203,19 @@ export default function SchedulePage() {
     setComments(prev => prev.filter(c => c.comment_id !== comment_id))
   }
 
-  async function moveSchedule(idx: number, dir: 'up' | 'down') {
+  async function reorderSchedule(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return
     const newList = [...daySchedules]
-    const target = dir === 'up' ? idx - 1 : idx + 1
-    if (target < 0 || target >= newList.length) return
-    // 두 항목의 time을 교환
-    const tempTime = newList[idx].time
-    newList[idx] = { ...newList[idx], time: newList[target].time }
-    newList[target] = { ...newList[target], time: tempTime }
-    // 두 항목 모두 서버에 업데이트
-    await Promise.all([
-      fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newList[idx]) }),
-      fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(newList[target]) }),
-    ])
+    const [moved] = newList.splice(fromIdx, 1)
+    newList.splice(toIdx, 0, moved)
+    // 재배열된 순서로 time 값을 재할당 (기존 시간 순서를 새 위치에 매핑)
+    const oldTimes = daySchedules.map(s => s.time)
+    const updated = newList.map((s, i) => ({ ...s, time: oldTimes[i] }))
+    await Promise.all(
+      updated.map(s =>
+        fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) })
+      )
+    )
     await fetchData()
   }
 
@@ -398,16 +400,52 @@ export default function SchedulePage() {
         ) : (
           daySchedules.map((s, idx) => {
             const next = daySchedules[idx + 1]
+            const isDragOver = dragOverIdx === idx
 
             return (
               <div key={s.schedule_id}>
                 {/* 장소 카드 */}
-                <div style={{
-                  background: 'white', borderRadius: 20, padding: '14px 16px',
-                  boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
-                  display: 'flex', alignItems: 'flex-start', gap: 12,
-                }}>
-                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 44 }}>
+                <div
+                  draggable
+                  onDragStart={() => { dragIdx.current = idx }}
+                  onDragOver={e => { e.preventDefault(); setDragOverIdx(idx) }}
+                  onDragLeave={() => setDragOverIdx(null)}
+                  onDrop={e => {
+                    e.preventDefault()
+                    setDragOverIdx(null)
+                    if (dragIdx.current !== null && dragIdx.current !== idx) {
+                      reorderSchedule(dragIdx.current, idx)
+                    }
+                    dragIdx.current = null
+                  }}
+                  onDragEnd={() => { dragIdx.current = null; setDragOverIdx(null) }}
+                  style={{
+                    background: 'white', borderRadius: 20, padding: '14px 16px',
+                    boxShadow: isDragOver ? '0 4px 20px rgba(255,107,157,0.3)' : '0 2px 12px rgba(0,0,0,0.06)',
+                    display: 'flex', alignItems: 'flex-start', gap: 12,
+                    border: isDragOver ? '2px dashed #FF6B9D' : '2px solid transparent',
+                    transition: 'all 0.15s',
+                    opacity: dragIdx.current === idx ? 0.5 : 1,
+                  }}
+                >
+                  {/* 드래그 핸들 (6점) */}
+                  <div
+                    style={{
+                      flexShrink: 0, cursor: 'grab', display: 'flex', flexDirection: 'column',
+                      gap: 3, padding: '4px 2px', alignSelf: 'center',
+                    }}
+                    title="드래그해서 순서 변경"
+                  >
+                    {[0, 1].map(row => (
+                      <div key={row} style={{ display: 'flex', gap: 3 }}>
+                        {[0, 1, 2].map(col => (
+                          <div key={col} style={{ width: 4, height: 4, borderRadius: '50%', background: '#ccc' }} />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ flexShrink: 0, textAlign: 'center', minWidth: 40 }}>
                     <div style={{ fontSize: 12, fontWeight: 800, color: '#FF6B9D' }}>{s.time || '--:--'}</div>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -415,13 +453,6 @@ export default function SchedulePage() {
                     {s.memo && <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>{s.memo}</div>}
                   </div>
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0, alignItems: 'center' }}>
-                    {/* 순서 이동 */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                      <button onClick={() => moveSchedule(idx, 'up')} disabled={idx === 0}
-                        style={{ background: idx === 0 ? 'rgba(0,0,0,0.04)' : 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 8, width: 26, height: 22, cursor: idx === 0 ? 'default' : 'pointer', fontSize: 10, color: idx === 0 ? '#ccc' : '#FF6B9D', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▲</button>
-                      <button onClick={() => moveSchedule(idx, 'down')} disabled={idx === daySchedules.length - 1}
-                        style={{ background: idx === daySchedules.length - 1 ? 'rgba(0,0,0,0.04)' : 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 8, width: 26, height: 22, cursor: idx === daySchedules.length - 1 ? 'default' : 'pointer', fontSize: 10, color: idx === daySchedules.length - 1 ? '#ccc' : '#FF6B9D', fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>▼</button>
-                    </div>
                     <button onClick={() => openEdit(s)} style={{
                       background: 'rgba(255,107,157,0.1)', border: 'none', borderRadius: 10,
                       padding: '6px 8px', cursor: 'pointer', fontSize: 14,
