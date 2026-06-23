@@ -65,7 +65,13 @@ export default function MapPage() {
     try {
       const res = await fetch('/api/trips')
       const data = await res.json()
-      setTrips(Array.isArray(data) ? data : [])
+      const sorted = Array.isArray(data) ? [...data].sort((a, b) => {
+        if (!a.start_date && !b.start_date) return 0
+        if (!a.start_date) return 1
+        if (!b.start_date) return -1
+        return a.start_date.localeCompare(b.start_date)
+      }) : []
+      setTrips(sorted)
     } finally {
       setLoading(false)
     }
