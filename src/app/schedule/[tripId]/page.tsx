@@ -128,8 +128,16 @@ export default function SchedulePage() {
   const [editTarget, setEditTarget] = useState<Schedule | null>(null)
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState<string | null>(null)
+
+  // 드래그 순서용 로컬 상태
+  const [localOrder, setLocalOrder] = useState<string[]>([])
   const dragIdx = useRef<number | null>(null)
+  const [draggingIdx, setDraggingIdx] = useState<number | null>(null)
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null)
+  // 터치 드래그용
+  const touchDragIdx = useRef<number | null>(null)
+  const touchDragOverIdx = useRef<number | null>(null)
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
   const [mapQuery, setMapQuery] = useState('')
   const mapDebounceRef = useRef<NodeJS.Timeout | null>(null)
   const dayTabsRef = useRef<HTMLDivElement | null>(null)
@@ -203,14 +211,15 @@ export default function SchedulePage() {
     setComments(prev => prev.filter(c => c.comment_id !== comment_id))
   }
 
-  async function reorderSchedule(fromIdx: number, toIdx: number) {
-    if (fromIdx === toIdx) return
-    const newList = [...daySchedules]
-    const [moved] = newList.splice(fromIdx, 1)
-    newList.splice(toIdx, 0, moved)
-    // 재배열된 순서로 time 값을 재할당 (기존 시간 순서를 새 위치에 매핑)
-    const oldTimes = daySchedules.map(s => s.time)
-    const updated = newList.map((s, i) => ({ ...s, time: oldTimes[i] }))
+  async function reorderSchedule(newOrderIds?: string[]) {
+    const orderedIds = newOrderIds ?? localOrder
+    const ordered = orderedIds
+      .map(id => rawDaySchedules.find(s => s.schedule_id === id))
+      .filter(Boolean) as typeof rawDaySchedules
+    if (ordered.length === 0) return
+    // 기존 시간값들을 새 순서에 재할당
+    const oldTimes = rawDaySchedules.map(s => s.time)
+    const updated = ordered.map((s, i) => ({ ...s, time: oldTimes[i] }))
     await Promise.all(
       updated.map(s =>
         fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) })
@@ -234,15 +243,64 @@ export default function SchedulePage() {
     return `${start.getMonth() + 1}/${start.getDate()}`
   }
 
-  const daySchedules = schedules
+  const rawDaySchedules = schedules
     .filter(s => s.day === selectedDay)
     .sort((a, b) => {
-      // 시간 없으면 맨 뒤
       if (!a.time && !b.time) return 0
       if (!a.time) return 1
       if (!b.time) return -1
       return a.time.localeCompare(b.time)
     })
+
+  // localOrder로 표시 순서 결정 (드래그 즉시 반영)
+  useEffect(() => {
+    setLocalOrder(rawDaySchedules.map(s => s.schedule_id))
+  }, [selectedDay, schedules])
+
+  const daySchedules = localOrder.length > 0
+    ? localOrder.map(id => rawDaySchedules.find(s => s.schedule_id === id)).filter(Boolean) as typeof rawDaySchedules
+    : rawDaySchedules
+
+  function applyLocalReorder(fromIdx: number, toIdx: number) {
+    if (fromIdx === toIdx) return
+    const newOrder = [...localOrder]
+    const [moved] = newOrder.splice(fromIdx, 1)
+    newOrder.splice(toIdx, 0, moved)
+    setLocalOrder(newOrder)
+    return newOrder
+  }
+
+  function handleTouchStart(idx: number) {
+    touchDragIdx.current = idx
+    setDraggingIdx(idx)
+  }
+
+  function handleTouchMove(e: React.TouchEvent) {
+    e.preventDefault()
+    const touch = e.touches[0]
+    const el = document.elementFromPoint(touch.clientX, touch.clientY)
+    const cardEl = el?.closest('[data-drag-idx]')
+    if (!cardEl) return
+    const overIdx = parseInt(cardEl.getAttribute('data-drag-idx') || '-1')
+    if (overIdx < 0 || overIdx === touchDragOverIdx.current) return
+    touchDragOverIdx.current = overIdx
+    setDragOverIdx(overIdx)
+    if (touchDragIdx.current !== null && touchDragIdx.current !== overIdx) {
+      applyLocalReorder(touchDragIdx.current, overIdx)
+      touchDragIdx.current = overIdx
+    }
+  }
+
+  function handleTouchEnd() {
+    if (touchDragIdx.current !== null) {
+      const finalOrder = localOrder
+      reorderSchedule(finalOrder)
+    }
+    touchDragIdx.current = null
+    touchDragOverIdx.current = null
+    setDraggingIdx(null)
+    setDragOverIdx(null)
+  }
 
   function handlePlaceInput(val: string, isEdit = false) {
     if (isEdit) {
@@ -401,31 +459,55 @@ export default function SchedulePage() {
           daySchedules.map((s, idx) => {
             const next = daySchedules[idx + 1]
             const isDragOver = dragOverIdx === idx
+            const isDragging = draggingIdx === idx
 
             return (
               <div key={s.schedule_id}>
                 {/* 장소 카드 */}
                 <div
+                  ref={el => { cardRefs.current[idx] = el }}
+                  data-drag-idx={idx}
                   draggable
-                  onDragStart={() => { dragIdx.current = idx }}
-                  onDragOver={e => { e.preventDefault(); setDragOverIdx(idx) }}
+                  onDragStart={e => {
+                    dragIdx.current = idx
+                    setDraggingIdx(idx)
+                    e.dataTransfer.effectAllowed = 'move'
+                  }}
+                  onDragOver={e => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragIdx.current !== null && dragIdx.current !== idx) {
+                      setDragOverIdx(idx)
+                      applyLocalReorder(dragIdx.current, idx)
+                      dragIdx.current = idx
+                    }
+                  }}
                   onDragLeave={() => setDragOverIdx(null)}
                   onDrop={e => {
                     e.preventDefault()
                     setDragOverIdx(null)
-                    if (dragIdx.current !== null && dragIdx.current !== idx) {
-                      reorderSchedule(dragIdx.current, idx)
-                    }
+                    setDraggingIdx(null)
                     dragIdx.current = null
+                    reorderSchedule()
                   }}
-                  onDragEnd={() => { dragIdx.current = null; setDragOverIdx(null) }}
+                  onDragEnd={() => {
+                    dragIdx.current = null
+                    setDraggingIdx(null)
+                    setDragOverIdx(null)
+                  }}
+                  onTouchStart={() => handleTouchStart(idx)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                   style={{
                     background: 'white', borderRadius: 20, padding: '14px 16px',
                     boxShadow: isDragOver ? '0 4px 20px rgba(255,107,157,0.3)' : '0 2px 12px rgba(0,0,0,0.06)',
                     display: 'flex', alignItems: 'flex-start', gap: 12,
                     border: isDragOver ? '2px dashed #FF6B9D' : '2px solid transparent',
-                    transition: 'all 0.15s',
-                    opacity: dragIdx.current === idx ? 0.5 : 1,
+                    transition: 'box-shadow 0.15s, border 0.15s',
+                    opacity: isDragging ? 0.4 : 1,
+                    cursor: 'default',
+                    userSelect: 'none',
+                    touchAction: 'none',
                   }}
                 >
                   {/* 드래그 핸들 (6점) */}
@@ -434,12 +516,11 @@ export default function SchedulePage() {
                       flexShrink: 0, cursor: 'grab', display: 'flex', flexDirection: 'column',
                       gap: 3, padding: '4px 2px', alignSelf: 'center',
                     }}
-                    title="드래그해서 순서 변경"
                   >
                     {[0, 1].map(row => (
                       <div key={row} style={{ display: 'flex', gap: 3 }}>
                         {[0, 1, 2].map(col => (
-                          <div key={col} style={{ width: 4, height: 4, borderRadius: '50%', background: '#ccc' }} />
+                          <div key={col} style={{ width: 4, height: 4, borderRadius: '50%', background: '#bbb' }} />
                         ))}
                       </div>
                     ))}
