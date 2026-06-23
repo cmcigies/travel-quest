@@ -30,6 +30,7 @@ interface Schedule {
   place: string
   memo: string
   created_at: string
+  sort_order: number | null
 }
 
 // 이동경로 섹션 컴포넌트
@@ -212,16 +213,21 @@ export default function SchedulePage() {
   }
 
   async function reorderSchedule() {
-    const orderedIds = localOrderRef.current   // ref에서 읽어 stale 방지
+    const orderedIds = localOrderRef.current
+    // rawDaySchedules는 schedules state 기반 — stale 안 됨
+    const allDaySchedules = schedules.filter(s => s.day === selectedDay)
     const ordered = orderedIds
-      .map(id => rawDaySchedules.find(s => s.schedule_id === id))
-      .filter(Boolean) as typeof rawDaySchedules
+      .map(id => allDaySchedules.find(s => s.schedule_id === id))
+      .filter(Boolean) as Schedule[]
     if (ordered.length === 0) return
-    const oldTimes = rawDaySchedules.map(s => s.time)
-    const updated = ordered.map((s, i) => ({ ...s, time: oldTimes[i] }))
+    // sort_order를 1, 2, 3... 으로 저장
     await Promise.all(
-      updated.map(s =>
-        fetch('/api/schedules', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(s) })
+      ordered.map((s, i) =>
+        fetch('/api/schedules', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...s, sort_order: i + 1 }),
+        })
       )
     )
     await fetchData()
@@ -245,6 +251,13 @@ export default function SchedulePage() {
   const rawDaySchedules = schedules
     .filter(s => s.day === selectedDay)
     .sort((a, b) => {
+      // sort_order가 있으면 우선 사용
+      const aHas = a.sort_order !== null && a.sort_order !== undefined
+      const bHas = b.sort_order !== null && b.sort_order !== undefined
+      if (aHas && bHas) return (a.sort_order as number) - (b.sort_order as number)
+      if (aHas) return -1
+      if (bHas) return 1
+      // 없으면 time 기준
       if (!a.time && !b.time) return 0
       if (!a.time) return 1
       if (!b.time) return -1
