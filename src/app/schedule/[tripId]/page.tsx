@@ -36,6 +36,17 @@ interface Schedule {
 // 이동경로 섹션 컴포넌트
 function RouteSection({ from, to, routeKey }: { from: string; to: string; routeKey: string }) {
   const [activeMode, setActiveMode] = useState<string | null>(null)
+  const [distInfo, setDistInfo] = useState<{ distance: string; duration: string } | null>(null)
+  const [distLoading, setDistLoading] = useState(true)
+
+  useEffect(() => {
+    setDistLoading(true)
+    setDistInfo(null)
+    fetch(`/api/distance?origin=${encodeURIComponent(from)}&destination=${encodeURIComponent(to)}`)
+      .then(r => r.json())
+      .then(d => { if (d.distance) setDistInfo(d) })
+      .finally(() => setDistLoading(false))
+  }, [from, to])
 
   const modes = [
     { key: 'walking', icon: '🚶', label: '도보', travelmode: 'walking' },
@@ -50,7 +61,6 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
     if (apiKey) {
       return `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin}&destination=${dest}&mode=${travelmode}&language=ko`
     }
-    // API 키 없으면 일반 maps embed (경로 미지원이지만 출발지 표시)
     return `https://maps.google.com/maps?saddr=${origin}&daddr=${dest}&dirflg=${travelmode === 'driving' ? 'd' : travelmode === 'transit' ? 'r' : 'w'}&output=embed&hl=ko`
   }
 
@@ -65,6 +75,21 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
           borderRadius: 20, padding: '4px 10px',
         }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#4285F4', marginRight: 2 }}>🗺️ 이동</span>
+
+          {/* 거리/시간 뱃지 */}
+          {distLoading ? (
+            <span style={{ fontSize: 10, color: '#aaa', padding: '2px 6px' }}>...</span>
+          ) : distInfo ? (
+            <span style={{
+              fontSize: 10, fontWeight: 700,
+              background: 'rgba(66,133,244,0.12)', color: '#4285F4',
+              borderRadius: 10, padding: '2px 7px',
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+            }}>
+              📍 {distInfo.distance} · 🚗 {distInfo.duration}
+            </span>
+          ) : null}
+
           {modes.map(m => (
             <button
               key={m.key}
@@ -99,6 +124,7 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
           }}>
             {modes.find(m => m.key === activeMode)?.icon}
             {modes.find(m => m.key === activeMode)?.label} · {from} → {to}
+            {distInfo && <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#888' }}>{distInfo.distance} · {distInfo.duration}</span>}
           </div>
           <iframe
             src={getMapSrc(modes.find(m => m.key === activeMode)!.travelmode)}
