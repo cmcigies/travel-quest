@@ -66,13 +66,12 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
     const fc = distInfo?.fromCoords
     const tc = distInfo?.toCoords
 
-    // 네이버 지도 /p/ 포맷: 좌표,이름 형태
-    const startSeg = fc ? `${fc.lng},${fc.lat},${sn},${sn}` : '-'
-    const endSeg   = tc ? `${tc.lng},${tc.lat},${dn},${dn}` : '-'
-    const webUrl = `https://map.naver.com/p/directions/${startSeg}/${endSeg}/-/${webKey}`
+    // 웹 URL: 네이버 지도는 자체 좌표계 사용 → 장소명 텍스트로 전달
+    const webUrl = `https://map.naver.com/p/directions/${sn}/${dn}/-/${webKey}`
 
     const isMobile = /android|iphone|ipad/i.test(navigator.userAgent)
     if (isMobile) {
+      // nmap:// 딥링크는 WGS84 좌표 지원 → 좌표 있으면 정확도 향상
       const appUrl = fc && tc
         ? `nmap://route/${nmapKey}?slat=${fc.lat}&slng=${fc.lng}&sname=${sn}&dlat=${tc.lat}&dlng=${tc.lng}&dname=${dn}&appname=com.travelquest.app`
         : `nmap://route/${nmapKey}?sname=${sn}&dname=${dn}&appname=com.travelquest.app`
