@@ -33,7 +33,12 @@ export async function GET(req: NextRequest) {
       ? `${Math.floor(durationMin / 60)}시간 ${durationMin % 60}분`
       : `${durationMin}분`
 
-    return NextResponse.json({ distance: `${distanceKm} km`, duration })
+    return NextResponse.json({
+      distance: `${distanceKm} km`,
+      duration,
+      fromCoords: from,
+      toCoords: to,
+    })
   } catch {
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
   }

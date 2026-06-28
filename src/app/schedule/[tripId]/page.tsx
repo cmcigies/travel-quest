@@ -35,7 +35,11 @@ interface Schedule {
 
 // 이동경로 섹션 컴포넌트
 function RouteSection({ from, to, routeKey }: { from: string; to: string; routeKey: string }) {
-  const [distInfo, setDistInfo] = useState<{ distance: string; duration: string } | null>(null)
+  const [distInfo, setDistInfo] = useState<{
+    distance: string; duration: string;
+    fromCoords?: { lat: number; lng: number };
+    toCoords?: { lat: number; lng: number };
+  } | null>(null)
   const [distLoading, setDistLoading] = useState(true)
 
   useEffect(() => {
@@ -54,19 +58,25 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
   ] as const
 
   function openNaver(mode: 'car' | 'walk' | 'public') {
-    const s = encodeURIComponent(from)
-    const d = encodeURIComponent(to)
+    const sn = encodeURIComponent(from)
+    const dn = encodeURIComponent(to)
+    const fc = distInfo?.fromCoords
+    const tc = distInfo?.toCoords
+
+    // 좌표가 있으면 정확한 URL 생성
+    const webUrl = fc && tc
+      ? `https://map.naver.com/v5/directions/${fc.lng},${fc.lat},${sn}/${tc.lng},${tc.lat},${dn}/-/${mode}`
+      : `https://map.naver.com/v5/directions/-/-/-/-/${mode}`
+
     const isMobile = /android|iphone|ipad/i.test(navigator.userAgent)
     if (isMobile) {
-      // 앱 딥링크 시도
-      const appUrl = `nmap://route/${mode}?sname=${s}&dname=${d}&appname=com.travelquest.app`
+      const appUrl = fc && tc
+        ? `nmap://route/${mode}?slat=${fc.lat}&slng=${fc.lng}&sname=${sn}&dlat=${tc.lat}&dlng=${tc.lng}&dname=${dn}&appname=com.travelquest.app`
+        : `nmap://route/${mode}?sname=${sn}&dname=${dn}&appname=com.travelquest.app`
       window.location.href = appUrl
-      // 300ms 후 앱이 없으면 웹으로 폴백
-      setTimeout(() => {
-        window.open(`https://map.naver.com/v5/directions/-/-/${d}/-/${mode}`, '_blank')
-      }, 300)
+      setTimeout(() => { window.open(webUrl, '_blank') }, 500)
     } else {
-      window.open(`https://map.naver.com/v5/directions/-/-/${d}/-/${mode}?sname=${s}&dname=${d}`, '_blank')
+      window.open(webUrl, '_blank')
     }
   }
 
@@ -82,7 +92,6 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
         }}>
           <span style={{ fontSize: 11, fontWeight: 700, color: '#03C75A', marginRight: 2 }}>🗺️ 네이버지도</span>
 
-          {/* 거리/시간 뱃지 */}
           {distLoading ? (
             <span style={{ fontSize: 10, color: '#aaa', padding: '2px 4px' }}>...</span>
           ) : distInfo ? (
@@ -389,19 +398,51 @@ export default function SchedulePage() {
   }
 
   function MapPreview({ query }: { query: string }) {
+    const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null)
+    const [mapLoading, setMapLoading] = useState(false)
+
+    useEffect(() => {
+      if (!query || query.length < 2) { setCoords(null); return }
+      setMapLoading(true)
+      fetch(`/api/geocode?place=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(d => { if (d.lat) setCoords(d) })
+        .finally(() => setMapLoading(false))
+    }, [query])
+
     if (!query) return null
-    const naverUrl = `https://map.naver.com/v5/search/${encodeURIComponent(query)}`
+
+    const naverUrl = coords
+      ? `https://map.naver.com/v5/directions/-/${coords.lng},${coords.lat},${encodeURIComponent(query)}/-/car`
+      : `https://map.naver.com/v5/search/${encodeURIComponent(query)}`
+
+    const osmSrc = coords
+      ? `https://www.openstreetmap.org/export/embed.html?bbox=${coords.lng - 0.01},${coords.lat - 0.01},${coords.lng + 0.01},${coords.lat + 0.01}&layer=mapnik&marker=${coords.lat},${coords.lng}`
+      : null
+
     return (
-      <div style={{ marginTop: 10, borderRadius: 14, border: '1.5px solid rgba(3,199,90,0.25)', background: 'rgba(3,199,90,0.04)', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 20 }}>📍</span>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{query}</div>
-          <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>네이버 지도에서 확인</div>
+      <div style={{ marginTop: 12, borderRadius: 16, overflow: 'hidden', border: '1.5px solid rgba(3,199,90,0.25)' }}>
+        <div style={{ padding: '8px 12px', background: 'rgba(3,199,90,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e' }}>📍 {query}</span>
+          <a href={naverUrl} target="_blank" rel="noopener noreferrer"
+            style={{ background: '#03C75A', color: 'white', borderRadius: 8, padding: '4px 10px', fontSize: 11, fontWeight: 700, textDecoration: 'none' }}>
+            네이버지도
+          </a>
         </div>
-        <a href={naverUrl} target="_blank" rel="noopener noreferrer"
-          style={{ flexShrink: 0, background: '#03C75A', color: 'white', border: 'none', borderRadius: 10, padding: '6px 12px', fontSize: 12, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
-          지도 보기
-        </a>
+        {mapLoading && (
+          <div style={{ height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9ff', fontSize: 13, color: '#aaa' }}>지도 로딩 중...</div>
+        )}
+        {!mapLoading && osmSrc && (
+          <iframe
+            src={osmSrc}
+            width="100%" height="180"
+            style={{ display: 'block', border: 'none' }}
+            loading="lazy"
+          />
+        )}
+        {!mapLoading && !osmSrc && (
+          <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8f9ff', fontSize: 12, color: '#aaa' }}>장소를 찾을 수 없어요</div>
+        )}
       </div>
     )
   }
