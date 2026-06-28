@@ -51,30 +51,33 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
       .finally(() => setDistLoading(false))
   }, [from, to])
 
+  // 네이버 지도 URL 모드 코드
+  // web URL: car / walk / transit
+  // nmap:// 딥링크: car / walk / public
   const modes = [
-    { key: 'walk', icon: '🚶', label: '도보' },
-    { key: 'public', icon: '🚌', label: '대중교통' },
-    { key: 'car', icon: '🚗', label: '자동차' },
+    { key: 'walk',   nmapKey: 'walk',   webKey: 'walk',    icon: '🚶', label: '도보' },
+    { key: 'public', nmapKey: 'public', webKey: 'transit', icon: '🚌', label: '대중교통' },
+    { key: 'car',    nmapKey: 'car',    webKey: 'car',     icon: '🚗', label: '자동차' },
   ] as const
 
-  function openNaver(mode: 'car' | 'walk' | 'public') {
+  function openNaver(nmapKey: string, webKey: string) {
     const sn = encodeURIComponent(from)
     const dn = encodeURIComponent(to)
     const fc = distInfo?.fromCoords
     const tc = distInfo?.toCoords
 
-    // 좌표가 있으면 정확한 URL 생성
-    const webUrl = fc && tc
-      ? `https://map.naver.com/v5/directions/${fc.lng},${fc.lat},${sn}/${tc.lng},${tc.lat},${dn}/-/${mode}`
-      : `https://map.naver.com/v5/directions/-/-/-/-/${mode}`
+    // 네이버 지도 /p/ 포맷: 좌표,이름 형태
+    const startSeg = fc ? `${fc.lng},${fc.lat},${sn},${sn}` : '-'
+    const endSeg   = tc ? `${tc.lng},${tc.lat},${dn},${dn}` : '-'
+    const webUrl = `https://map.naver.com/p/directions/${startSeg}/${endSeg}/-/${webKey}`
 
     const isMobile = /android|iphone|ipad/i.test(navigator.userAgent)
     if (isMobile) {
       const appUrl = fc && tc
-        ? `nmap://route/${mode}?slat=${fc.lat}&slng=${fc.lng}&sname=${sn}&dlat=${tc.lat}&dlng=${tc.lng}&dname=${dn}&appname=com.travelquest.app`
-        : `nmap://route/${mode}?sname=${sn}&dname=${dn}&appname=com.travelquest.app`
+        ? `nmap://route/${nmapKey}?slat=${fc.lat}&slng=${fc.lng}&sname=${sn}&dlat=${tc.lat}&dlng=${tc.lng}&dname=${dn}&appname=com.travelquest.app`
+        : `nmap://route/${nmapKey}?sname=${sn}&dname=${dn}&appname=com.travelquest.app`
       window.location.href = appUrl
-      setTimeout(() => { window.open(webUrl, '_blank') }, 500)
+      setTimeout(() => { window.open(webUrl, '_blank') }, 600)
     } else {
       window.open(webUrl, '_blank')
     }
@@ -107,7 +110,7 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
           {modes.map(m => (
             <button
               key={m.key}
-              onClick={() => openNaver(m.key)}
+              onClick={() => openNaver(m.nmapKey, m.webKey)}
               style={{
                 border: 'none', borderRadius: 12, padding: '3px 8px',
                 cursor: 'pointer', fontSize: 13, fontWeight: 700,
