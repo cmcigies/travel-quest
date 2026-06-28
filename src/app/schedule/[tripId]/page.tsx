@@ -35,7 +35,6 @@ interface Schedule {
 
 // 이동경로 섹션 컴포넌트
 function RouteSection({ from, to, routeKey }: { from: string; to: string; routeKey: string }) {
-  const [activeMode, setActiveMode] = useState<string | null>(null)
   const [distInfo, setDistInfo] = useState<{ distance: string; duration: string } | null>(null)
   const [distLoading, setDistLoading] = useState(true)
 
@@ -49,19 +48,26 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
   }, [from, to])
 
   const modes = [
-    { key: 'walking', icon: '🚶', label: '도보', travelmode: 'walking' },
-    { key: 'transit', icon: '🚌', label: '대중교통', travelmode: 'transit' },
-    { key: 'driving', icon: '🚗', label: '자동차', travelmode: 'driving' },
-  ]
+    { key: 'walk', icon: '🚶', label: '도보' },
+    { key: 'public', icon: '🚌', label: '대중교통' },
+    { key: 'car', icon: '🚗', label: '자동차' },
+  ] as const
 
-  function getMapSrc(travelmode: string) {
-    const origin = encodeURIComponent(from)
-    const dest = encodeURIComponent(to)
-    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_KEY
-    if (apiKey) {
-      return `https://www.google.com/maps/embed/v1/directions?key=${apiKey}&origin=${origin}&destination=${dest}&mode=${travelmode}&language=ko`
+  function openNaver(mode: 'car' | 'walk' | 'public') {
+    const s = encodeURIComponent(from)
+    const d = encodeURIComponent(to)
+    const isMobile = /android|iphone|ipad/i.test(navigator.userAgent)
+    if (isMobile) {
+      // 앱 딥링크 시도
+      const appUrl = `nmap://route/${mode}?sname=${s}&dname=${d}&appname=com.travelquest.app`
+      window.location.href = appUrl
+      // 300ms 후 앱이 없으면 웹으로 폴백
+      setTimeout(() => {
+        window.open(`https://map.naver.com/v5/directions/-/-/${d}/-/${mode}`, '_blank')
+      }, 300)
+    } else {
+      window.open(`https://map.naver.com/v5/directions/-/-/${d}/-/${mode}?sname=${s}&dname=${d}`, '_blank')
     }
-    return `https://maps.google.com/maps?saddr=${origin}&daddr=${dest}&dirflg=${travelmode === 'driving' ? 'd' : travelmode === 'transit' ? 'r' : 'w'}&output=embed&hl=ko`
   }
 
   return (
@@ -69,22 +75,21 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
         <div style={{ width: 2, height: 10, background: '#e0e0e0', borderRadius: 2, flexShrink: 0 }} />
         <div style={{
-          display: 'inline-flex', alignItems: 'center', gap: 4,
-          background: 'rgba(66,133,244,0.06)',
-          border: '1px solid rgba(66,133,244,0.15)',
+          display: 'inline-flex', alignItems: 'center', gap: 4, flexWrap: 'wrap',
+          background: 'rgba(3,199,90,0.06)',
+          border: '1px solid rgba(3,199,90,0.2)',
           borderRadius: 20, padding: '4px 10px',
         }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: '#4285F4', marginRight: 2 }}>🗺️ 이동</span>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#03C75A', marginRight: 2 }}>🗺️ 네이버지도</span>
 
           {/* 거리/시간 뱃지 */}
           {distLoading ? (
-            <span style={{ fontSize: 10, color: '#aaa', padding: '2px 6px' }}>...</span>
+            <span style={{ fontSize: 10, color: '#aaa', padding: '2px 4px' }}>...</span>
           ) : distInfo ? (
             <span style={{
               fontSize: 10, fontWeight: 700,
-              background: 'rgba(66,133,244,0.12)', color: '#4285F4',
+              background: 'rgba(3,199,90,0.1)', color: '#03C75A',
               borderRadius: 10, padding: '2px 7px',
-              display: 'inline-flex', alignItems: 'center', gap: 3,
             }}>
               📍 {distInfo.distance} · 🚗 {distInfo.duration}
             </span>
@@ -93,49 +98,20 @@ function RouteSection({ from, to, routeKey }: { from: string; to: string; routeK
           {modes.map(m => (
             <button
               key={m.key}
-              onClick={() => setActiveMode(activeMode === m.key ? null : m.key)}
+              onClick={() => openNaver(m.key)}
               style={{
                 border: 'none', borderRadius: 12, padding: '3px 8px',
                 cursor: 'pointer', fontSize: 13, fontWeight: 700,
-                background: activeMode === m.key ? '#4285F4' : 'rgba(66,133,244,0.1)',
-                color: activeMode === m.key ? 'white' : '#4285F4',
+                background: 'rgba(3,199,90,0.12)', color: '#03C75A',
                 transition: 'all 0.15s',
               }}
-              title={m.label}
+              title={`${m.label}으로 길찾기`}
             >
               {m.icon}
             </button>
           ))}
         </div>
       </div>
-
-      {/* iframe 펼침 */}
-      {activeMode && (
-        <div style={{
-          marginTop: 8, marginLeft: 12,
-          borderRadius: 16, overflow: 'hidden',
-          border: '2px solid rgba(66,133,244,0.15)',
-          boxShadow: '0 2px 12px rgba(66,133,244,0.1)',
-        }}>
-          <div style={{
-            padding: '8px 12px', background: 'rgba(66,133,244,0.06)',
-            fontSize: 11, color: '#4285F4', fontWeight: 700,
-            display: 'flex', alignItems: 'center', gap: 6,
-          }}>
-            {modes.find(m => m.key === activeMode)?.icon}
-            {modes.find(m => m.key === activeMode)?.label} · {from} → {to}
-            {distInfo && <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#888' }}>{distInfo.distance} · {distInfo.duration}</span>}
-          </div>
-          <iframe
-            src={getMapSrc(modes.find(m => m.key === activeMode)!.travelmode)}
-            width="100%"
-            height="220"
-            style={{ display: 'block', border: 'none' }}
-            loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
-          />
-        </div>
-      )}
     </div>
   )
 }
@@ -414,20 +390,18 @@ export default function SchedulePage() {
 
   function MapPreview({ query }: { query: string }) {
     if (!query) return null
-    const src = `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed&hl=ko`
+    const naverUrl = `https://map.naver.com/v5/search/${encodeURIComponent(query)}`
     return (
-      <div style={{ marginTop: 12, borderRadius: 16, overflow: 'hidden', border: '2px solid #f0f0f0' }}>
-        <div style={{ padding: '8px 12px', background: '#f8f8f8', fontSize: 11, color: '#888', fontWeight: 600 }}>
-          📍 {query}
+      <div style={{ marginTop: 10, borderRadius: 14, border: '1.5px solid rgba(3,199,90,0.25)', background: 'rgba(3,199,90,0.04)', padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
+        <span style={{ fontSize: 20 }}>📍</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: '#1a1a2e', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{query}</div>
+          <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>네이버 지도에서 확인</div>
         </div>
-        <iframe
-          src={src}
-          width="100%"
-          height="200"
-          style={{ display: 'block', border: 'none' }}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-        />
+        <a href={naverUrl} target="_blank" rel="noopener noreferrer"
+          style={{ flexShrink: 0, background: '#03C75A', color: 'white', border: 'none', borderRadius: 10, padding: '6px 12px', fontSize: 12, fontWeight: 700, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+          지도 보기
+        </a>
       </div>
     )
   }
