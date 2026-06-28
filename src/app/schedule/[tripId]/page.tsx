@@ -646,7 +646,7 @@ export default function SchedulePage() {
       {showAddModal && (
         <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowAddModal(false); setMapQuery('') } }}>
-          <div style={{ width: '100%', background: 'white', borderRadius: '24px 24px 0 0', padding: '24px 20px 40px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ width: '100%', background: 'white', borderRadius: '24px 24px 0 0', padding: '24px 20px 100px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', margin: 0 }}>📍 일정 추가</h2>
               <button onClick={() => { setShowAddModal(false); setMapQuery('') }} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#aaa' }}>✕</button>
@@ -702,7 +702,7 @@ export default function SchedulePage() {
       {showEditModal && editTarget && (
         <div className="fixed inset-0 z-50 flex items-end" style={{ background: 'rgba(0,0,0,0.5)' }}
           onClick={e => { if (e.target === e.currentTarget) { setShowEditModal(false); setMapQuery('') } }}>
-          <div style={{ width: '100%', background: 'white', borderRadius: '24px 24px 0 0', padding: '24px 20px 40px', maxHeight: '90vh', overflowY: 'auto' }}>
+          <div style={{ width: '100%', background: 'white', borderRadius: '24px 24px 0 0', padding: '24px 20px 100px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
               <h2 style={{ fontSize: 18, fontWeight: 800, color: '#1a1a2e', margin: 0 }}>✏️ 일정 수정</h2>
               <button onClick={() => { setShowEditModal(false); setMapQuery('') }} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#aaa' }}>✕</button>
