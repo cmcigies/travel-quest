@@ -635,7 +635,7 @@ export default function SchedulePage() {
 
       {/* Add FAB */}
       <button onClick={openAdd} className="fixed z-50" style={{
-        bottom: 30, right: 24, width: 60, height: 60, borderRadius: '50%',
+        bottom: 90, right: 24, width: 60, height: 60, borderRadius: '50%',
         background: 'linear-gradient(135deg, #FF6B9D, #FF5BAE)', border: 'none',
         boxShadow: '0 4px 0 #CC2277, 0 8px 24px rgba(255,107,157,0.5)',
         color: 'white', fontSize: 28, cursor: 'pointer',
